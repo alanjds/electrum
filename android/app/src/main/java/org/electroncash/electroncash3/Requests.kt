@@ -45,7 +45,8 @@ class RequestsFragment : Fragment(), MainFragment {
             } else {
                 subtitle.value = null
                 rvRequests.adapter = RequestsAdapter(
-                    activity!!, wallet.callAttr("get_sorted_requests", daemonModel.config))
+                    activity!!,
+                    wallet.callAttr("get_sorted_requests", daemonModel.config).asList())
                 btnAdd.show()
             }
         }
@@ -69,15 +70,15 @@ class RequestsFragment : Fragment(), MainFragment {
 }
 
 
-class RequestsAdapter(val activity: FragmentActivity, val requests: PyObject)
+class RequestsAdapter(val activity: FragmentActivity, val requests: List<PyObject>)
     : BoundAdapter<RequestModel>(R.layout.request_list) {
 
     override fun getItemCount(): Int {
-        return requests.callAttr("__len__").toInt()
+        return requests.size
     }
 
     override fun getItem(position: Int): RequestModel {
-        return RequestModel(requests.callAttr("__getitem__", position))
+        return RequestModel(requests.get(position))
     }
 
     override fun onBindViewHolder(holder: BoundViewHolder<RequestModel>, position: Int) {

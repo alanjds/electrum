@@ -80,8 +80,9 @@ class DaemonModel {
             if (wallet != null) {
                 walletName.value = wallet.callAttr("basename").toString()
                 if (wallet.callAttr("is_up_to_date").toBoolean()) {
-                    val balances = wallet.callAttr("get_balance")  // Returns (confirmed, unconfirmed, unmatured)
-                    walletBalance.value = balances.callAttr("__getitem__", 0).toLong()
+                    // get_balance returns the tuple (confirmed, unconfirmed, unmatured)
+                    val balances = wallet.callAttr("get_balance").asList()
+                    walletBalance.value = balances.get(0).toLong()
                 } else {
                     walletBalance.value = null
                 }
@@ -112,15 +113,8 @@ class DaemonModel {
         }
     }
 
-    // TODO remove once Chaquopy provides better syntax.
-    fun listWallets(): MutableList<String> {
-        val pyNames = commands.callAttr("list_wallets")
-        val names = ArrayList<String>()
-        for (i in 0 until pyNames.callAttr("__len__").toInt()) {
-            val name = pyNames.callAttr("__getitem__", i).toString()
-            names.add(name)
-        }
-        return names
+    fun listWallets(): List<String> {
+        return commands.callAttr("list_wallets").asList().map { it.toString() }
     }
 
     fun createWallet(name: String, password: String, kwargName: String, kwargValue: String) {

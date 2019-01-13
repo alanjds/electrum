@@ -80,11 +80,8 @@ class SettingsFragment : PreferenceFragmentCompat(), MainFragment {
         observeGroup(preferenceScreen)
     }
 
-    // TODO improve once Chaquopy provides better syntax.
     fun setEntries(key: String, pyList: PyObject) {
-        val arr = Array(pyList.callAttr("__len__").toInt()) {
-            pyList.callAttr("__getitem__", it).toString()
-        }
+        val arr = pyList.asList().map { it.toString() }.toTypedArray()
         (findPreference(key) as ListPreference).apply {
             entries = arr
             entryValues = arr

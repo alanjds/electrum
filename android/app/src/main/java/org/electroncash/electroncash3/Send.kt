@@ -153,11 +153,11 @@ class SendPasswordDialog : PasswordDialog(runInBackground = true) {
         if (daemonModel.netStatus.value == null) {
             throw ToastException(R.string.not_connected)
         }
-        val result = daemonModel.network.callAttr("broadcast_transaction", tx)
-        if (result.callAttr("__getitem__", 0).toBoolean()) {
+        val result = daemonModel.network.callAttr("broadcast_transaction", tx).asList()
+        if (result.get(0).toBoolean()) {
             model.result.postValue(null)
         } else {
-            val err = ServerError(result.callAttr("__getitem__", 1).toString())
+            val err = ServerError(result.get(1).toString())
             if (err.isClean) {
                 throw ToastException(err.message)
             } else {

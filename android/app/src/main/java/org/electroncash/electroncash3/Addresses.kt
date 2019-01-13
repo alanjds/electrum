@@ -65,7 +65,7 @@ class AddressesFragment : Fragment(), MainFragment {
         daemonModel.addresses.observe(viewLifecycleOwner, Observer { addresses ->
             rvAddresses.adapter =
                 if (addresses == null) null
-                else AddressesAdapter(activity!!, daemonModel.wallet!!, addresses)
+                else AddressesAdapter(activity!!, daemonModel.wallet!!, addresses.asList())
 
             subtitle.value = when {
                 addresses == null -> getString(R.string.no_wallet)
@@ -78,15 +78,15 @@ class AddressesFragment : Fragment(), MainFragment {
 
 
 class AddressesAdapter(val activity: FragmentActivity, val wallet: PyObject,
-                       val addresses: PyObject)
+                       val addresses: List<PyObject>)
     : BoundAdapter<AddressModel>(R.layout.address) {
 
     override fun getItem(position: Int): AddressModel {
-        return AddressModel(wallet, addresses.callAttr("__getitem__", position))
+        return AddressModel(wallet, addresses.get(position))
     }
 
     override fun getItemCount(): Int {
-        return addresses.callAttr("__len__").toInt()
+        return addresses.size
     }
 
     override fun onBindViewHolder(holder: BoundViewHolder<AddressModel>, position: Int) {
