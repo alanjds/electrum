@@ -57,7 +57,7 @@ class DaemonModel {
         // non-exceptionally.
         watchdog = Runnable {
             for (thread in listOf(daemon, network)) {
-                if (! thread.callAttr("is_alive").toJava(Boolean::class.java)) {
+                if (! thread.callAttr("is_alive").toBoolean()) {
                     throw RuntimeException("$thread unexpectedly stopped")
                 }
             }
@@ -68,10 +68,10 @@ class DaemonModel {
 
     fun initCallback() {
         callback = Runnable {
-            if (network.callAttr("is_connected").toJava(Boolean::class.java)) {
+            if (network.callAttr("is_connected").toBoolean()) {
                 netStatus.value = NetworkStatus(
-                    network.callAttr("get_local_height").toJava(Int::class.java),
-                    network.callAttr("get_server_height").toJava(Int::class.java))
+                    network.callAttr("get_local_height").toInt(),
+                    network.callAttr("get_server_height").toInt())
             } else {
                 netStatus.value = null
             }
@@ -79,9 +79,9 @@ class DaemonModel {
             val wallet = this.wallet
             if (wallet != null) {
                 walletName.value = wallet.callAttr("basename").toString()
-                if (wallet.callAttr("is_up_to_date").toJava(Boolean::class.java)) {
+                if (wallet.callAttr("is_up_to_date").toBoolean()) {
                     val balances = wallet.callAttr("get_balance")  // Returns (confirmed, unconfirmed, unmatured)
-                    walletBalance.value = balances.callAttr("__getitem__", 0).toJava(Long::class.java)
+                    walletBalance.value = balances.callAttr("__getitem__", 0).toLong()
                 } else {
                     walletBalance.value = null
                 }
@@ -116,7 +116,7 @@ class DaemonModel {
     fun listWallets(): MutableList<String> {
         val pyNames = commands.callAttr("list_wallets")
         val names = ArrayList<String>()
-        for (i in 0 until pyNames.callAttr("__len__").toJava(Int::class.java)) {
+        for (i in 0 until pyNames.callAttr("__len__").toInt()) {
             val name = pyNames.callAttr("__getitem__", i).toString()
             names.add(name)
         }

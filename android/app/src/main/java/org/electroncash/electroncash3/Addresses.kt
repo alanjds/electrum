@@ -86,7 +86,7 @@ class AddressesAdapter(val activity: FragmentActivity, val wallet: PyObject,
     }
 
     override fun getItemCount(): Int {
-        return addresses.callAttr("__len__").toJava(Int::class.java)
+        return addresses.callAttr("__len__").toInt()
     }
 
     override fun onBindViewHolder(holder: BoundViewHolder<AddressModel>, position: Int) {
@@ -99,7 +99,7 @@ class AddressesAdapter(val activity: FragmentActivity, val wallet: PyObject,
 
 class AddressModel(val wallet: PyObject, val addr: PyObject) {
     val type
-        get() = guiAddresses.callAttr("addr_type", wallet, addr).toJava(Int::class.java)
+        get() = guiAddresses.callAttr("addr_type", wallet, addr).toInt()
 
     val addrString
         get() = addr.callAttr("to_ui_string").toString()

@@ -119,10 +119,10 @@ class WalletsFragment : Fragment(), MainFragment {
             }
         })
         btnSend.setOnClickListener {
-            if (daemonModel.wallet!!.callAttr("is_watching_only").toJava(Boolean::class.java)) {
+            if (daemonModel.wallet!!.callAttr("is_watching_only").toBoolean()) {
                 toast(R.string.this_wallet_is_watching_only_)
             } else if (daemonModel.wallet!!.callAttr("get_receiving_addresses")
-                       .callAttr("__len__").toJava(Int::class.java) == 0) {
+                       .callAttr("__len__").toInt() == 0) {
                 // At least one receiving address is needed to call wallet.dummy_address.
                 toast(R.string.electron_cash_is_generating_your_addresses__please_wait_)
             } else {
@@ -312,9 +312,9 @@ class NewWalletImportDialog : NewWalletDialog2() {
         for (word in input.split(Regex("\\s+"))) {
             if (word.isEmpty()) {
                 // Can happen at start or end of list.
-            } else if (clsAddress.callAttr("is_valid", word).toJava(Boolean::class.java)) {
+            } else if (clsAddress.callAttr("is_valid", word).toBoolean()) {
                 foundAddress = true
-            } else if (libBitcoin.callAttr("is_private_key", word).toJava(Boolean::class.java)) {
+            } else if (libBitcoin.callAttr("is_private_key", word).toBoolean()) {
                 foundPrivkey = true
             } else {
                 throw ToastException(getString(R.string.not_a_valid, word))
@@ -505,11 +505,11 @@ class TransactionsAdapter(val activity: FragmentActivity, val transactions: PyOb
             t.callAttr("__getitem__", "value").toString(),
             t.callAttr("__getitem__", "balance").toString(),
             t.callAttr("__getitem__", "date").toString(),
-            t.callAttr("__getitem__", "confirmations").toJava(Int::class.java))
+            t.callAttr("__getitem__", "confirmations").toInt())
     }
 
     override fun getItemCount(): Int {
-        return transactions.callAttr("__len__").toJava(Int::class.java)
+        return transactions.callAttr("__len__").toInt()
     }
 
     override fun onBindViewHolder(holder: BoundViewHolder<TransactionModel>, position: Int) {
@@ -562,16 +562,16 @@ class TransactionDialog() : AlertDialogFragment() {
         val txInfo = wallet.callAttr("get_tx_info", tx)
         dialog.tvTxid.text = txid
 
-        val timestamp = txInfo.callAttr("__getitem__", 8).toJava(Long::class.java)
+        val timestamp = txInfo.callAttr("__getitem__", 8).toLong()
         dialog.tvTimestamp.text = if (timestamp == 0L) getString(R.string.Unknown)
                                   else libUtil.callAttr("format_time", timestamp).toString()
 
         dialog.tvStatus.text = txInfo.callAttr("__getitem__", 1).toString()
 
-        val size = tx.callAttr("estimated_size").toJava(Int::class.java)
+        val size = tx.callAttr("estimated_size").toInt()
         dialog.tvSize.text = getString(R.string.bytes, size)
 
-        val fee = txInfo.callAttr("__getitem__", 5)?.toJava(Long::class.java)
+        val fee = txInfo.callAttr("__getitem__", 5)?.toLong()
         if (fee == null) {
             dialog.tvFee.text = getString(R.string.Unknown)
         } else {

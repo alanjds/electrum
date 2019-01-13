@@ -56,15 +56,14 @@ class NetworkFragment : Fragment(), MainFragment {
             val ifaceItems = py.builtins.callAttr(
                 "sorted", daemonModel.network.get("interfaces")!!.callAttr("items"))
             var status = getString(R.string.connected_to,
-                                   ifaceItems.callAttr("__len__").toJava(Int::class.java))
+                                   ifaceItems.callAttr("__len__").toInt())
 
             val isSplit = daemonModel.network.callAttr("get_blockchains")
-                              .callAttr("__len__").toJava(Int::class.java) > 1
+                              .callAttr("__len__").toInt() > 1
             if (isSplit) {
                 val curChain = daemonModel.network.callAttr("blockchain")
                 status += "\n" + getString(R.string.chain_split,
-                                           curChain.callAttr("get_base_height")
-                                               .toJava(Int::class.java))
+                                           curChain.callAttr("get_base_height").toInt())
             }
             tvStatus.text = status
 
@@ -85,7 +84,7 @@ class IfacesAdapter(val activity: FragmentActivity, val ifaceItems: PyObject, va
     : BoundAdapter<IfaceModel>(R.layout.iface) {
 
     override fun getItemCount(): Int {
-        return ifaceItems.callAttr("__len__").toJava(Int::class.java)
+        return ifaceItems.callAttr("__len__").toInt()
     }
 
     override fun getItem(position: Int): IfaceModel {
