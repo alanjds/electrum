@@ -53,8 +53,8 @@
 
             <ImageView
                 android:id="@+id/imgQR"
-                android:layout_width="150dp"
-                android:layout_height="150dp"
+                android:layout_width="@dimen/qr_resolution"
+                android:layout_height="@dimen/qr_resolution"
                 android:layout_marginEnd="8dp"
                 android:layout_marginLeft="8dp"
                 android:layout_marginRight="8dp"
