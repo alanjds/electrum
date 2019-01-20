@@ -57,7 +57,7 @@ class NetworkFragment : Fragment(), MainFragment {
             ifaces.sortBy { it.get("server").toString() }
 
             var status = getString(R.string.connected_to, ifaces.size)
-            val isSplit = daemonModel.network.callAttr("get_blockchains").asList().size > 1
+            val isSplit = daemonModel.network.callAttr("get_blockchains").asMap().size > 1
             if (isSplit) {
                 val curChain = daemonModel.network.callAttr("blockchain")
                 status += "\n" + getString(R.string.chain_split,
