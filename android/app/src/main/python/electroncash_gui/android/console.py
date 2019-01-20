@@ -6,7 +6,8 @@ import os
 from os.path import dirname, exists, join
 import unittest
 
-from electroncash import commands, daemon, keystore, tests, simple_config, util, version
+from electroncash import (commands, daemon, keystore, tests, simple_config, storage, util,
+                          version)
 from electroncash.storage import WalletStorage
 from electroncash.wallet import (ImportedAddressWallet, ImportedPrivkeyWallet, Standard_Wallet,
                                  Wallet)
@@ -164,7 +165,8 @@ class AndroidCommands(commands.Commands):
 
     def list_wallets(self):
         """List available wallets"""
-        return sorted(os.listdir(self._wallet_path()))
+        return sorted([name for name in os.listdir(self._wallet_path())
+                       if not name.endswith(storage.TMP_SUFFIX)])
 
     def delete_wallet(self, name):
         """Delete a wallet"""
