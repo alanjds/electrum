@@ -58,8 +58,8 @@ class MainActivity : AppCompatActivity() {
         super.onPostCreate(if (stateValid) state else null)
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onResumeFragments() {
+        super.onResumeFragments()
         showFragment(navigation.selectedItemId)
         if (cleanStart) {
             cleanStart = false
@@ -84,7 +84,10 @@ class MainActivity : AppCompatActivity() {
             newFrag.title.observe(this, Observer { setTitle(it ?: "") })
             newFrag.subtitle.observe(this, Observer { supportActionBar!!.setSubtitle(it) })
         }
-        ft.commitNow()
+
+        // BottomNavigationView onClick is sometimes triggered after state has been saved
+        // (https://github.com/Electron-Cash/Electron-Cash/issues/1091).
+        ft.commitNowAllowingStateLoss()
     }
 
     private fun getFragment(id: Int): Fragment {
@@ -95,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             frag = FRAGMENTS[id]!!.java.newInstance()
             supportFragmentManager.beginTransaction()
-                .add(flContent.id, frag, tag).commitNow()
+                .add(flContent.id, frag, tag).commitNowAllowingStateLoss()
             return frag
         }
     }
