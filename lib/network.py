@@ -1422,8 +1422,9 @@ class Network(util.DaemonThread):
         return True
 
     def blockchain(self):
-        if self.interface and self.interface.blockchain is not None:
-            self.blockchain_index = self.interface.blockchain.base_height
+        with self.interface_lock:
+            if self.interface and self.interface.blockchain is not None:
+                self.blockchain_index = self.interface.blockchain.base_height
         return self.blockchains[self.blockchain_index]
 
     def get_blockchains(self):
