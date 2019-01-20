@@ -172,21 +172,15 @@ class SelectWalletDialog : AlertDialogFragment(), DialogInterface.OnClickListene
 
 
 class NewWalletDialog1 : AlertDialogFragment() {
-    lateinit var typeAdapter: MenuAdapter
-
     override fun onBuildDialog(builder: AlertDialog.Builder) {
         builder.setTitle(R.string.new_wallet)
             .setView(R.layout.new_wallet)
             .setPositiveButton(R.string.next, null)
             .setNegativeButton(R.string.cancel, null)
-
-        // For some reason `context` is sometimes null in onShowDialog
-        // (https://github.com/Electron-Cash/Electron-Cash/issues/1046).
-        typeAdapter = MenuAdapter(context!!, R.menu.wallet_type)
     }
 
     override fun onShowDialog(dialog: AlertDialog) {
-        dialog.spnType.adapter = typeAdapter
+        dialog.spnType.adapter = MenuAdapter(context!!, R.menu.wallet_type)
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             try {
