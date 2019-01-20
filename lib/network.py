@@ -87,12 +87,14 @@ def filter_version(servers):
 
 def filter_protocol(hostmap, protocol = 's'):
     '''Filters the hostmap for those implementing protocol.
+    Protocol may be: 's', 't', or 'st' for both.
     The result is a list in serialized form.'''
     eligible = []
     for host, portmap in hostmap.items():
-        port = portmap.get(protocol)
-        if port:
-            eligible.append(serialize_server(host, port, protocol))
+        for proto in protocol:
+            port = portmap.get(proto)
+            if port:
+                eligible.append(serialize_server(host, port, proto))
     return eligible
 
 def get_eligible_servers(hostmap=None, protocol="s", exclude_set=set()):
@@ -103,6 +105,30 @@ def get_eligible_servers(hostmap=None, protocol="s", exclude_set=set()):
 def pick_random_server(hostmap = None, protocol = 's', exclude_set = set()):
     eligible = get_eligible_servers(hostmap, protocol, exclude_set)
     return random.choice(eligible) if eligible else None
+
+def servers_to_hostmap(servers):
+    ''' Takes an iterable of HOST:PORT:PROTOCOL strings and breaks them into
+    a hostmap dict of host -> { protocol : port } suitable to be passed to
+    pick_random_server() and get_eligible_servers() above.'''
+    ret = dict()
+    for s in servers:
+        try:
+            host, port, protocol = deserialize_server(s)
+        except (AssertionError, ValueError, TypeError) as e:
+            util.print_error("[servers_to_hostmap] deserialization failure for server:", s, "error:", str(e))
+            continue # deserialization error
+        m = ret.get(host, dict())
+        need_add = len(m) == 0
+        m[protocol] = port
+        if need_add:
+            m['pruning'] = '-' # hmm. this info is missing, so give defaults just to make the map complete.
+            m['version'] = PROTOCOL_VERSION
+            ret[host] = m
+    return ret
+
+def hostmap_to_servers(hostmap):
+    ''' The inverse of servers_to_hostmap '''
+    return filter_protocol(hostmap, protocol = 'st')
 
 from .simple_config import SimpleConfig
 
@@ -182,7 +208,8 @@ class Network(util.DaemonThread):
             self.blockchain_index = 0
         # Server for addresses and transactions
         self.blacklisted_servers = set(self.config.get('server_blacklist', []))
-        self.print_error("server blacklist: {}".format(self.blacklisted_servers))
+        self.whitelisted_servers, self.whitelisted_servers_hostmap = self._compute_whitelist()
+        self.print_error("server blacklist: {} server whitelist: {}".format(self.blacklisted_servers, self.whitelisted_servers))
         self.default_server = self.get_config_server()
 
         self.lock = threading.Lock()
@@ -428,7 +455,8 @@ class Network(util.DaemonThread):
 
     def start_random_interface(self):
         exclude_set = self.get_unavailable_servers()
-        server_key = pick_random_server(self.get_servers(), self.protocol, exclude_set)
+        hostmap = self.get_servers() if not self.is_whitelist_only() else self.whitelisted_servers_hostmap
+        server_key = pick_random_server(hostmap, self.protocol, exclude_set)
         if server_key:
             self.start_interface(server_key)
 
@@ -482,11 +510,12 @@ class Network(util.DaemonThread):
             self.socket_queue = queue.Queue()
 
     def set_parameters(self, host, port, protocol, proxy, auto_connect):
-        try:
-            self.save_parameters(host, port, protocol, proxy, auto_connect)
-        except ValueError:
-            return
-        self.load_parameters()
+        with self.interface_lock:
+            try:
+                self.save_parameters(host, port, protocol, proxy, auto_connect)
+            except ValueError:
+                return
+            self.load_parameters()
 
     def save_parameters(self, host, port, protocol, proxy, auto_connect):
         proxy_str = serialize_proxy(proxy)
@@ -530,8 +559,10 @@ class Network(util.DaemonThread):
             except:
                 self.print_error('Warning: failed to parse server-string; falling back to random.')
                 server = None
-        if (not server) or (server in self.blacklisted_servers):
-            server = pick_random_server()
+        wl_only = self.is_whitelist_only()
+        if (not server) or (server in self.blacklisted_servers) or (wl_only and server not in self.whitelisted_servers):
+            hostmap = None if not wl_only else self.whitelisted_servers_hostmap
+            server = pick_random_server(hostmap, exclude_set=self.blacklisted_servers)
         return server
 
     def switch_to_random_interface(self):
@@ -707,8 +738,9 @@ class Network(util.DaemonThread):
     def send(self, messages, callback):
         '''Messages is a list of (method, params) tuples'''
         messages = list(messages)
-        with self.pending_sends_lock:
-            self.pending_sends.append((messages, callback))
+        if messages: # Guard against empty message-list which is a no-op and just wastes CPU to enque/dequeue (not even callback is called). I've seen the code send empty message lists before in synchronizer.py
+            with self.pending_sends_lock:
+                self.pending_sends.append((messages, callback))
 
     def process_pending_sends(self):
         # Requests needs connectivity.  If we don't have an interface,
@@ -753,9 +785,7 @@ class Network(util.DaemonThread):
         '''A connection to server either went down, or was never made.
         We distinguish by whether it is in self.interfaces.'''
         if blacklist:
-            self.blacklisted_servers.add(server)
-            # rt12 --- there might be a better place for this.
-            self.config.set_key("server_blacklist", list(self.blacklisted_servers), True)
+            self.server_set_blacklisted(server, True, save=True, skip_connection_logic=True)
         else:
             self.disconnected_servers.add(server)
         if server == self.default_server:
@@ -1471,17 +1501,18 @@ class Network(util.DaemonThread):
         return r.get('result')
 
     @staticmethod
-    def __wait_for(it):
-        """Wait for the result of calling lambda `it`."""
+    def __wait_for(it, timeout=30):
+        """Wait for the result of calling lambda `it`.
+           Will raise util.TimeoutException or util.ServerErrorResponse on failure."""
         q = queue.Queue()
         it(q.put)
         try:
-            result = q.get(block=True, timeout=30)
+            result = q.get(block=True, timeout=(timeout or 0.010)) # does not support non-blocking
         except queue.Empty:
             raise util.TimeoutException(_('Server did not answer'))
 
         if result.get('error'):
-            raise Exception(result.get('error'))
+            raise util.ServerErrorResponse(_("Server returned an error response"), result.get('error'))
 
         return result.get('result')
 
@@ -1494,25 +1525,105 @@ class Network(util.DaemonThread):
 
         invocation(callback)
 
-    # NOTE this method handles exceptions and a special edge case, counter to
-    # what the other ElectrumX methods do. This is unexpected.
     def broadcast_transaction(self, transaction, callback=None):
-        command = 'blockchain.transaction.broadcast'
-        invocation = lambda c: self.send([(command, [str(transaction)])], c)
+        ''' This is the legacy EC/Electrum API that we still need to support
+        for plugins and other code, but it has been improved to not allow for
+        phishing attacks by calling broadcast_transaction2 which actually
+        deduces a more intelligent and phishing-proof error message.
+        If you want the actual server response, use broadcast_transaction2 and
+        catch exceptions. '''
 
         if callback:
-            invocation(callback)
+            command = 'blockchain.transaction.broadcast'
+            self.send([(command, [str(transaction)])], callback)
             return
 
         try:
-            out = Network.__wait_for(invocation)
-        except BaseException as e:
-            return False, "error: " + str(e)
-
-        if out != transaction.txid():
-            return False, "error: " + out
+            out = self.broadcast_transaction2(transaction)
+        except BaseException as e: #catch-all. May be util.TimeoutException, util.ServerError subclass or other.
+            return False, "error: " + str(e) # Ergh. To remain compatible with old code we prepend this ugly "error: "
 
         return True, out
+
+    def broadcast_transaction2(self, transaction, timeout=30):
+        ''' Very similar to broadcast_transation() but it actually tells calling
+        code what the nature of the error was in a more explicit manner by
+        raising an Exception. Normally a util.TimeoutException,
+        util.TxHashMismatch, or util.ServerErrorResonse is raised on broadcast
+        error or warning. TxHashMismatch indicates the broadcast succeeded
+        but that the tx hash returned by the server does not match the tx hash
+        of the specified transaction. All other exceptions indicate no broadcast
+        has successfully occurred.
+        Does not support using a callback function.'''
+
+        command = 'blockchain.transaction.broadcast'
+        invocation = lambda c: self.send([(command, [str(transaction)])], c)
+
+        try:
+            out = Network.__wait_for(invocation, timeout=timeout) # may raise util.TimeoutException, util.ServerErrorResponse
+        except util.ServerErrorResponse as e:
+            # rephrase the generic message to something more suitable
+            self.print_error("Server error response was:", str(e.server_msg))
+            raise util.ServerErrorResponse(Network.transmogrify_broadcast_response_for_gui(e.server_msg), e.server_msg)
+
+        if out != transaction.txid():
+            self.print_error("Server replied with a mismatching txid:", str(out))
+            raise util.TxHashMismatch(_("Server response does not match signed transaction ID."), str(out))
+
+        return out
+
+    @staticmethod
+    def transmogrify_broadcast_response_for_gui(server_msg):
+        # NB: the server_msg is usually a dict but not always.
+        # Unfortunately, ElectrumX doesn't return a good error code. It's always '1'.
+        # So, we must use substring matching to grok the error message.
+        # We do NOT ever want to print to the user the server message as this has potential for a phishing exploit.
+        # See: https://github.com/spesmilo/electrum/issues/4968
+        # So.. these messages mostly come from groking the source code of BU and Bitcoin ABC. If that fails,
+        # a generic error string is returned.
+        if not isinstance(server_msg, str):
+            server_msg = str(server_msg)
+        server_msg = server_msg.replace("\n", r"\n") # replace \n with slash-n because dict does this.
+        if r'dust' in server_msg:
+            dust_thold = 546
+            try:
+                from .wallet import dust_threshold
+                dust_thold = dust_threshold(Network.get_instance())
+            except: pass
+            return _("Transaction could not be broadcast due to dust outputs (dust threshold is {} satoshis).").format(dust_thold)
+        elif r'Missing inputs' in server_msg or r'Inputs unavailable' in server_msg or r"bad-txns-inputs-spent" in server_msg:
+            return _("Transaction could not be broadcast due to missing, already-spent, or otherwise invalid inputs.")
+        elif r'insufficient priority' in server_msg:
+            return _("The transaction was rejected due to paying insufficient fees and/or for being of extremely low priority.")
+        elif r'bad-txns-premature-spend-of-coinbase' in server_msg:
+            return _("Transaction could not be broadcast due to an attempt to spend a coinbase input before maturity.")
+        elif r"txn-already-in-mempool" in server_msg or r"txn-already-known" in server_msg:
+            return _("The transaction already exists in the server's mempool.")
+        elif r"txn-mempool-conflict" in server_msg:
+            return _("The transaction conflicts with a transaction already in the server's mempool.")
+        elif r'too-long-mempool-chain' in server_msg:
+            return _("The transaction was rejected due to having too many mempool ancestors. Wait for confirmations and try again.")
+        elif r"bad-txns-nonstandard-inputs" in server_msg:
+            return _("The transaction was rejected due to its use of non-standard inputs.")
+        elif r"absurdly-high-fee" in server_msg:
+            return _("The transaction was rejected because it specifies an absurdly high fee.")
+        elif r"non-mandatory-script-verify-flag" in server_msg:
+            return _("The transaction was rejected because it contians a non-mandatory script verify flag.")
+        elif r"tx-size" in server_msg:
+            return _("The transaction was rejected because it is too large.")
+        elif r"scriptsig-size" in server_msg:
+            return _("The transaction was rejected because it contains a script that is too large.")
+        elif r"scriptpubkey" in server_msg:
+            return _("The transaction was rejected because it contains a non-standard script public key signature.")
+        elif r"bare-multisig" in server_msg:
+            return _("The transaction was rejected because it contains a bare multisig input.")
+        elif r"multi-op-return" in server_msg:
+            return _("The transaction was rejected because it contains more than 1 OP_RETURN input.")
+        elif r"scriptsig-not-pushonly" in server_msg:
+            return _("The transaction was rejected because it contains non-push-only script sigs.")
+        elif r'bad-txns-nonfinal' in server_msg:
+            return _("The transaction was rejected because it is not considered final according to network rules.")
+        return _("An error occurred broadcasting the transaction")
 
     # Used by the verifier job.
     def get_merkle_for_transaction(self, tx_hash, tx_height, callback=None):
@@ -1545,3 +1656,67 @@ class Network(util.DaemonThread):
             }
             return proxies
         return None
+
+    def server_set_blacklisted(self, server, b, save=True, skip_connection_logic=False):
+        assert isinstance(server, str)
+        if b:
+            self.blacklisted_servers |= {server}
+        else:
+            self.blacklisted_servers -= {server}
+        self.config.set_key("server_blacklist", list(self.blacklisted_servers), save)
+        if b and not skip_connection_logic and server in self.interfaces:
+            self.connection_down(server, False) # if blacklisting, this disconnects (if we were connected)
+
+    def server_is_blacklisted(self, server): return server in self.blacklisted_servers
+
+    def server_set_whitelisted(self, server, b, save=True):
+        assert isinstance(server, str)
+        adds = set(self.config.get('server_whitelist_added', []))
+        rems = set(self.config.get('server_whitelist_removed', []))
+        is_hardcoded = server in self._hardcoded_whitelist
+        s = {server} # make a set so |= and -= work
+        len0 = len(self.whitelisted_servers)
+        if b:
+            # the below logic keeps the adds list from containing redundant 'whitelisted' servers that are already defined in servers.json
+            # it also makes it so that if the developers remove a server from servers.json, it goes away from the whitelist automatically.
+            if is_hardcoded:
+                adds -= s # it's in the hardcoded list anyway, remove it from adds to keep adds from being redundant
+            else:
+                adds |= s # it's not a hardcoded server, add it to 'adds'
+            rems -= s
+            self.whitelisted_servers |= s
+        else:
+            adds -= s
+            if is_hardcoded:
+                rems |= s # it's in the hardcoded set, so it needs to explicitly be added to the 'rems' set to be taken out of the dynamically computed whitelist (_compute_whitelist())
+            else:
+                rems -= s # it's not in the hardcoded list, so no need to add it to the rems as it will be not whitelisted on next run since it's gone from 'adds'
+            self.whitelisted_servers -= s
+        if len0 != len(self.whitelisted_servers):
+            # it changed. So re-cache hostmap which we use as an argument to pick_random_server() elsewhere in this class
+            self.whitelisted_servers_hostmap = servers_to_hostmap(self.whitelisted_servers)
+        self.config.set_key('server_whitelist_added', list(adds), save)
+        self.config.set_key('server_whitelist_removed', list(rems), save)
+
+    def server_is_whitelisted(self, server): return server in self.whitelisted_servers
+
+    def _compute_whitelist(self):
+        if not hasattr(self, '_hardcoded_whitelist'):
+            self._hardcoded_whitelist = frozenset(hostmap_to_servers(NetworkConstants.HARDCODED_DEFAULT_SERVERS))
+        ret = set(self._hardcoded_whitelist)
+        ret |= set(self.config.get('server_whitelist_added', [])) # this key is all the servers that weren't in the hardcoded whitelist that the user explicitly added
+        ret -= set(self.config.get('server_whitelist_removed', [])) # this key is all the servers that were hardcoded in the whitelist that the user explicitly removed
+        return ret, servers_to_hostmap(ret)
+
+    def is_whitelist_only(self): return bool(self.config.get('whitelist_servers_only', False))
+
+    def set_whitelist_only(self, b):
+        if bool(b) == self.is_whitelist_only():
+            return # disallow redundant/noop calls
+        self.config.set_key('whitelist_servers_only', b, True)
+        if b:
+            with self.interface_lock:
+                # now, disconnect from all non-whitelisted servers
+                for s in self.interfaces.copy():
+                    if s not in self.whitelisted_servers:
+                        self.connection_down(s)

@@ -43,15 +43,7 @@ from electroncash.networks import NetworkConstants
 
 from .installwizard import InstallWizard, GoBack
 
-
-try:
-    from . import icons_rc
-except Exception as e:
-    print(e)
-    print("Error: Could not find icons file.")
-    print("Run 'pyrcc5 icons.qrc -o gui/qt/icons_rc.py', and re-run Electron Cash")
-    sys.exit(1)
-
+from . import icons # This needs to be imported once app-wide then the :icons/ namespace becomes available for Qt icon filenames.
 from .util import *   # * needed for plugins
 from .main_window import ElectrumWindow
 from .network_dialog import NetworkDialog
@@ -73,10 +65,6 @@ class OpenFileEventFilter(QObject):
 
 class QElectrumApplication(QApplication):
     new_window_signal = pyqtSignal(str, object)
-
-
-class QNetworkUpdatedSignalObject(QObject):
-    network_updated_signal = pyqtSignal(str, object)
 
 
 class ElectrumGui:
@@ -108,7 +96,6 @@ class ElectrumGui:
         self.timer = QTimer(self.app); self.timer.setSingleShot(False); self.timer.setInterval(500) #msec
         self.gc_timer = QTimer(self.app); self.gc_timer.setSingleShot(True); self.gc_timer.timeout.connect(ElectrumGui.gc); self.gc_timer.setInterval(333) #msec
         self.nd = None
-        self.network_updated_signal_obj = QNetworkUpdatedSignalObject()
         # init tray
         self.dark_icon = self.config.get("dark_icon", False)
         self.tray = QSystemTrayIcon(self.tray_icon(), None)
@@ -174,8 +161,7 @@ class ElectrumGui:
             self.nd.show()
             self.nd.raise_()
             return
-        self.nd = NetworkDialog(self.daemon.network, self.config,
-                                self.network_updated_signal_obj)
+        self.nd = NetworkDialog(self.daemon.network, self.config)
         self.nd.show()
 
     def create_window_for_wallet(self, wallet):
@@ -212,6 +198,8 @@ class ElectrumGui:
                         print_error('[start_new_window] Exception caught (GoBack)', e)
                     finally:
                         wizard.terminate()
+                        del wizard
+                        gc.collect() # wizard sticks around in memory sometimes, otherwise :/
                     if not wallet:
                         return
                     wallet.start_threads(self.daemon.network)
@@ -219,10 +207,10 @@ class ElectrumGui:
             except BaseException as e:
                 traceback.print_exc(file=sys.stdout)
                 if '2fa' in str(e):
-                    d = QMessageBox(QMessageBox.Warning, _('Error'), '2FA wallets for Bitcoin Cash are currently unsupported by <a href="https://api.trustedcoin.com/#/">TrustedCoin</a>. Follow <a href="https://github.com/Electron-Cash/Electron-Cash/issues/41#issuecomment-357468208">this guide</a> in order to recover your funds.')
+                    d = QMessageBoxMixin(QMessageBox.Warning, _('Error'), '2FA wallets for Bitcoin Cash are currently unsupported by <a href="https://api.trustedcoin.com/#/">TrustedCoin</a>. Follow <a href="https://github.com/Electron-Cash/Electron-Cash/issues/41#issuecomment-357468208">this guide</a> in order to recover your funds.')
                     d.exec_()
                 else:
-                    d = QMessageBox(QMessageBox.Warning, _('Error'), 'Cannot load wallet:\n' + str(e))
+                    d = QMessageBoxMixin(QMessageBox.Warning, _('Error'), 'Cannot load wallet:\n' + str(e))
                     d.exec_()
                 return
             w = self.create_window_for_wallet(wallet)

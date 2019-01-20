@@ -367,25 +367,26 @@ class Abstract_Wallet(PrintError):
         with self.lock: return self.up_to_date
 
     def set_label(self, name, text = None):
-        if isinstance(name, Address):
-            name = name.to_storage_string()
-        changed = False
-        old_text = self.labels.get(name)
-        if text:
-            text = text.replace("\n", " ")
-            if old_text != text:
-                self.labels[name] = text
-                changed = True
-        else:
-            if old_text:
-                self.labels.pop(name)
-                changed = True
+        with self.lock:
+            if isinstance(name, Address):
+                name = name.to_storage_string()
+            changed = False
+            old_text = self.labels.get(name)
+            if text:
+                text = text.replace("\n", " ")
+                if old_text != text:
+                    self.labels[name] = text
+                    changed = True
+            else:
+                if old_text:
+                    self.labels.pop(name)
+                    changed = True
 
-        if changed:
-            run_hook('set_label', self, name, text)
-            self.storage.put('labels', self.labels)
+            if changed:
+                run_hook('set_label', self, name, text)
+                self.storage.put('labels', self.labels)
 
-        return changed
+            return changed
 
     def is_mine(self, address):
         assert not isinstance(address, str)
@@ -1178,13 +1179,16 @@ class Abstract_Wallet(PrintError):
 
     def address_is_old(self, address, age_limit=2):
         age = -1
+        local_height = self.get_local_height()
         for tx_hash, tx_height in self.get_address_history(address):
             if tx_height == 0:
                 tx_age = 0
             else:
-                tx_age = self.get_local_height() - tx_height + 1
+                tx_age = local_height - tx_height + 1
             if tx_age > age:
                 age = tx_age
+            if age > age_limit:
+                break # ok, it's old. not need to keep looping
         return age > age_limit
 
     def cpfp(self, tx, fee):
@@ -1858,7 +1862,7 @@ class Deterministic_Wallet(Abstract_Wallet):
             if len(addresses) < limit:
                 self.create_new_address(for_change)
                 continue
-            if list(map(lambda a: self.address_is_old(a), addresses[-limit:] )) == limit*[False]:
+            if all(map(lambda a: not self.address_is_old(a), addresses[-limit:] )):
                 break
             else:
                 self.create_new_address(for_change)

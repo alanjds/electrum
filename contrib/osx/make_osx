@@ -2,20 +2,25 @@
 
 build_dir=$(dirname "$0")
 test -n "$build_dir" -a -d "$build_dir" || exit
-cd $build_dir/../..
 
 . "$build_dir"/base.sh # functions we use below
+
+cd $build_dir/../..
+
 
 export PYTHONHASHSEED=22
 VERSION=`git describe --tags`
 
 # Paramterize
-PYTHON_VERSION=3.6.4
+PYTHON_VERSION=3.6.8
 BUILDDIR=/tmp/electron-cash-build
 PACKAGE=Electron-Cash
 GIT_REPO_ACCT=https://github.com/Electron-Cash
 GIT_REPO=$GIT_REPO_ACCT/Electron-Cash
 LIBSECP_VERSION=452d8e4d2a2f9f1b5be6b02e18f1ba102e5ca0b4
+# Compute major.minor Python version from above using Bash array magic
+MAJ_MIN=(${PYTHON_VERSION//./ })
+MAJ_MIN=${MAJ_MIN[0]}.${MAJ_MIN[1]}
 
 which xcodebuild > /dev/null 2>&1 || fail "Please install Xcode and xcode command line tools to continue"
 
@@ -37,21 +42,34 @@ else
     warn "Code signing DISABLED. Specify a valid macOS Developer identity installed on the system as the first argument to this script to enable signing."
 fi
 
+have_brew=`which brew`
+if [ -n "$have_brew" ]; then
+    info "Ensuring Python prerequisites are installed via brew"
+    for a in openssl readline sqlite3 xz zlib; do
+        brew list $a > /dev/null 2>&1
+        if [ "$?" != "0" ]; then
+            info "Installing $a"
+            brew install "$a" || fail "Could not install $a"
+        else
+            info "$a found"
+        fi
+    done
+fi
 
 info "Installing Python $PYTHON_VERSION"
-export PATH="~/.pyenv/bin:~/.pyenv/shims:~/Library/Python/3.6/bin:$PATH"
+export PATH=~/.pyenv/bin:~/.pyenv/versions/${PYTHON_VERSION}/bin:~/.pyenv/shims:~/Library/Python/${MAJ_MIN}/bin:"$PATH"
 if [ -d "~/.pyenv" ]; then
   pyenv update
 else
   curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash > /dev/null 2>&1
 fi
 PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install -s $PYTHON_VERSION && \
-pyenv global $PYTHON_VERSION || \
+pyenv global $PYTHON_VERSION && pyenv rehash || \
 fail "Unable to use Python $PYTHON_VERSION"
 
 
-info "Installing pyinstaller"
-python3 -m pip install pyinstaller -I --user || fail "Could not install pyinstaller"
+info "Installing PyInstaller"
+python3 -m pip install https://github.com/cculianu/pyinstaller/releases/download/3.4AppleEventsCodeSign/PyInstaller_3.4+AppleEvents+CodeSign.zip -I --user && pyenv rehash || fail "Could not install PyInstaller"
 
 info "Using these versions for building $PACKAGE:"
 sw_vers
@@ -68,21 +86,15 @@ git submodule update
 rm  -rf $BUILDDIR > /dev/null 2>&1
 mkdir $BUILDDIR
 
-info "Downloading icons..."
-for repo in icons; do
-  git clone $GIT_REPO_ACCT/electrum-$repo $BUILDDIR/electrum-$repo
-done
-
-cp    $BUILDDIR/electrum-icons/icons_rc.py ./gui/qt/
-
+info "Installing requests..."
+python3 -m pip install -I --user requests || fail "Could not install requests"
 info "Making locale..."
-./contrib/make_locale || fail "Failed to make locale..."
+python3 ./contrib/make_locale || fail "Failed to make locale..."
 
 info "Downloading libusb..."
 curl https://homebrew.bintray.com/bottles/libusb-1.0.21.el_capitan.bottle.tar.gz | \
 tar xz --directory $BUILDDIR
-cp $BUILDDIR/libusb/1.0.21/lib/libusb-1.0.dylib contrib/osx
-DoCodeSignMaybe "libusb" "contrib/osx/libusb-1.0.dylib" "$APP_SIGN" # If APP_SIGN is empty will be a noop
+cp -fp $BUILDDIR/libusb/1.0.21/lib/libusb-1.0.dylib contrib/osx
 
 info "Building libsecp256k1"
 git clone https://github.com/bitcoin-core/secp256k1 $BUILDDIR/secp256k1
@@ -94,7 +106,6 @@ git clean -f -x -q
 make
 popd
 cp -fp $BUILDDIR/secp256k1/.libs/libsecp256k1.0.dylib contrib/osx
-DoCodeSignMaybe "libsecp256k1" "contrib/osx/libsecp256k1.0.dylib" "$APP_SIGN" # If APP_SIGN is empty will be a noop
 
 info "Building CalinsQRReader..."
 d=contrib/osx/CalinsQRReader
@@ -117,7 +128,11 @@ info "Building $PACKAGE..."
 python3 setup.py install --user > /dev/null || fail "Could not build $PACKAGE"
 
 info "Building binary"
-pyinstaller --noconfirm --ascii --name $VERSION contrib/osx/osx.spec || fail "Could not build binary"
+if [ -n "$APP_SIGN" ]; then
+    pyinstaller --osx-codesign-identity "$APP_SIGN" --clean --noconfirm --ascii --name $VERSION contrib/osx/osx.spec || fail "Could not build binary"
+else
+    pyinstaller --clean --noconfirm --ascii --name $VERSION contrib/osx/osx.spec || fail "Could not build binary"
+fi
 
 info "Adding bitcoincash URI types to Info.plist"
 plutil -insert 'CFBundleURLTypes' \
@@ -125,7 +140,7 @@ plutil -insert 'CFBundleURLTypes' \
 	-- dist/$PACKAGE.app/Contents/Info.plist \
 	|| fail "Could not add keys to Info.plist. Make sure the program 'plutil' exists and is installed."
 
-DoCodeSignMaybe "app bundle" "dist/${PACKAGE}.app" "$APP_SIGN" # If APP_SIGN is empty will be a noop
+DoCodeSignMaybe "app bundle" "dist/${PACKAGE}.app" "$APP_SIGN" # must force a codesign again because Info.plist modified above
 
 info "Creating .DMG"
 hdiutil create -fs HFS+ -volname $PACKAGE -srcfolder dist/$PACKAGE.app dist/$PACKAGE-$VERSION.dmg || fail "Could not create .DMG"
@@ -136,3 +151,5 @@ if [ -z "$APP_SIGN" ]; then
     warn "App was built successfully but was not code signed. Users may get security warnings from macOS."
     warn "Specify a valid code signing identity as the first argument to this script to enable code signing."
 fi
+
+rm -fr $BUILDDIR

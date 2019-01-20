@@ -1,11 +1,10 @@
 # -*- mode: python -*-
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_dynamic_libs
-
-import sys
-import os
+import sys, os
 
 PACKAGE='Electron-Cash'
+BUNDLE_IDENTIFIER='org.electroncash.' + PACKAGE # Used for info.plist 
 PYPKG='electroncash'
 MAIN_SCRIPT='electron-cash'
 ICONS_FILE='electron.icns'
@@ -60,7 +59,8 @@ a = Analysis([home+MAIN_SCRIPT,
               home+'lib/commands.py',
               home+'plugins/cosigner_pool/qt.py',
               home+'plugins/email_requests/qt.py',
-              home+'plugins/trezor/client.py',
+              home+'plugins/trezor/clientbase.py',
+              home+'plugins/trezor/trezor.py',
               home+'plugins/trezor/qt.py',
               home+'plugins/keepkey/qt.py',
               home+'plugins/ledger/qt.py',
@@ -78,12 +78,14 @@ for d in a.datas:
 # Remove QtWeb and other stuff that we know we never use.
 # This is a hack of sorts that works to keep the binary file size reasonable.
 bins2remove=('qtweb', 'qt3d', 'qtgame', 'qtdesigner', 'qtquick', 'qtlocation', 'qttest', 'qtxml')
-print("Removing", *bins2remove)
+files2remove=('libqsqlmysql.dylib', 'libdeclarative_multimedia.dylib', 'libqtquickscene2dplugin.dylib', 'libqtquickscene3dplugin.dylib')
+print("Removing", *(bins2remove + files2remove))
 for x in a.binaries.copy():
     for r in bins2remove:
-        if x[0].lower().startswith(r):
+        if x[0].lower().startswith(r) or os.path.basename(x[1].lower()) in files2remove:
             a.binaries.remove(x)
             print('----> Removed:', x)
+            break # break from inner loop
 #
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
@@ -103,7 +105,7 @@ app = BUNDLE(exe,
              version = VERSION,
              name=PACKAGE + '.app',
              icon=home+ICONS_FILE,
-             bundle_identifier=None,
+             bundle_identifier=BUNDLE_IDENTIFIER,
              info_plist = {
                  'NSHighResolutionCapable':'True',
                  'NSSupportsAutomaticGraphicsSwitching':'True'

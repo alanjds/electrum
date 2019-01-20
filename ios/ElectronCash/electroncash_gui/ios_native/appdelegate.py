@@ -9,7 +9,7 @@
 from .uikit_bindings import *
 from . import gui
 from . import utils
-import ElectronCash.app
+import app
 import time
 
 BG_HARD_LIMIT_SECS = 120.0
@@ -46,7 +46,7 @@ class PythonAppDelegate(UIResponder):
     def application_didFinishLaunchingWithOptions_(self, application : ObjCInstance, launchOptions : ObjCInstance) -> bool:
         #utils.NSLog("App finished launching. Options: %s",str(py_from_ns(launchOptions) if launchOptions else dict()))
 
-        ElectronCash.app.main()
+        app.main()
 
         return True
 
@@ -96,9 +96,13 @@ class PythonAppDelegate(UIResponder):
 
         self.cleanupBlurView()
         eg = gui.ElectrumGui.gui
-        if eg is not None and not eg.daemon_is_running() and not self.firstRun:
-            utils.NSLog("Background: Restarting Daemon...")
-            eg.start_daemon()
+        if eg is not None and not self.firstRun:
+            if not eg.daemon_is_running():
+                utils.NSLog("Background: Restarting Daemon...")
+                eg.start_daemon()
+            else:
+                # <50MB disk space will show an error and stop daemon
+                eg.check_low_diskspace()
 
         self.firstRun = False
 

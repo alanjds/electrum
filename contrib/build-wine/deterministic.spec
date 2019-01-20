@@ -15,6 +15,7 @@ home = 'C:\\electrum\\'
 
 # see https://github.com/pyinstaller/pyinstaller/issues/2005
 hiddenimports = []
+hiddenimports += ['PyQt5.sip']
 hiddenimports += collect_submodules('trezorlib')
 hiddenimports += collect_submodules('btchip')
 hiddenimports += collect_submodules('keepkeylib')
@@ -52,7 +53,8 @@ a = Analysis([home+'electron-cash',
               home+'lib/commands.py',
               home+'plugins/cosigner_pool/qt.py',
               home+'plugins/email_requests/qt.py',
-              home+'plugins/trezor/client.py',
+              home+'plugins/trezor/clientbase.py',
+              home+'plugins/trezor/trezor.py',
               home+'plugins/trezor/qt.py',
               home+'plugins/keepkey/qt.py',
               home+'plugins/ledger/qt.py',

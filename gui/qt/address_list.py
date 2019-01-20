@@ -27,7 +27,7 @@ import webbrowser
 
 from functools import partial
 
-from .util import MyTreeWidget, MONOSPACE_FONT, SortableTreeWidgetItem
+from .util import MyTreeWidget, MONOSPACE_FONT, SortableTreeWidgetItem, rate_limited
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QColor, QKeySequence
 from PyQt5.QtWidgets import QTreeWidgetItem, QAbstractItemView, QMenu
@@ -45,6 +45,8 @@ class AddressList(MyTreeWidget):
         self.refresh_headers()
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
+        # force attributes to always be defined, even if None, at construction.
+        self.wallet = self.parent.wallet if hasattr(self.parent, 'wallet') else None
 
     def refresh_headers(self):
         headers = [ ('Address'), _('Index'),_('Label'), _('Balance'), _('Tx')]
@@ -52,6 +54,13 @@ class AddressList(MyTreeWidget):
         if fx and fx.get_fiat_address_config():
             headers.insert(4, '{} {}'.format(fx.get_currency(), _(' Balance')))
         self.update_headers(headers)
+
+    @rate_limited(1.0) # We rate limit the address list refresh no more than once every second
+    def update(self):
+        if self.wallet and (not self.wallet.thread or not self.wallet.thread.isRunning()):
+            # short-cut return if window was closed and wallet is stopped
+            return
+        super().update()
 
     def on_update(self):
         def item_path(item): # Recursively builds the path for an item eg 'parent_name/item_name'
@@ -150,7 +159,7 @@ class AddressList(MyTreeWidget):
         
         # Now, at the very end, enforce previous UI state with respect to what was expanded or not. See #1042
         restore_expanded_items(self.invisibleRootItem(), expanded_item_names)
-        
+
     def create_menu(self, position):
         from electroncash.wallet import Multisig_Wallet
         is_multisig = isinstance(self.wallet, Multisig_Wallet)
@@ -182,7 +191,8 @@ class AddressList(MyTreeWidget):
             menu.addAction(_("Copy {}").format(column_title), lambda: self.parent.app.clipboard().setText(copy_text))
             menu.addAction(_('Details'), lambda: self.parent.show_address(addr))
             if col in self.editable_columns:
-                menu.addAction(_("Edit {}").format(column_title), lambda: self.editItem(item, col))
+                menu.addAction(_("Edit {}").format(column_title), lambda: self.editItem(self.itemAt(position), # NB: C++ item may go away if this widget is refreshed while menu is up -- so need to re-grab and not store in lamba. See #953
+                                                                                        col))
             menu.addAction(_("Request payment"), lambda: self.parent.receive_at(addr))
             if self.wallet.can_export():
                 menu.addAction(_("Private key"), lambda: self.parent.show_private_key(addr))
@@ -217,3 +227,16 @@ class AddressList(MyTreeWidget):
                 self.parent.app.clipboard().setText(text)
         else:
             super().keyPressEvent(event)
+
+    def update_labels(self):
+        def update_recurse(root):
+            child_count = root.childCount()
+            for i in range(child_count):
+                item = root.child(i)
+                addr = item.data(0, Qt.UserRole)
+                if isinstance(addr, Address):
+                    label = self.wallet.labels.get(addr.to_storage_string(), '')
+                    item.setText(2, label)
+                if item.childCount():
+                    update_recurse(item)
+        update_recurse(self.invisibleRootItem())
