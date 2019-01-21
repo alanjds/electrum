@@ -417,7 +417,8 @@ class Network(util.DaemonThread):
 
     def get_interfaces(self):
         '''The interfaces that are in connected state'''
-        return list(self.interfaces.keys())
+        with self.interface_lock:
+            return list(self.interfaces.keys())
 
     def get_servers(self):
         out = bitcoin.NetworkConstants.DEFAULT_SERVERS

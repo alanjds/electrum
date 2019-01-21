@@ -53,8 +53,11 @@ class NetworkFragment : Fragment(), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvIfaces)
         daemonUpdate.observe(viewLifecycleOwner, Observer {
+            val ifaceLock = daemonModel.network.get("interface_lock")!!
+            ifaceLock.callAttr("acquire")
             val ifaces = ArrayList(daemonModel.network.get("interfaces")!!.asMap().values)
             ifaces.sortBy { it.get("server").toString() }
+            ifaceLock.callAttr("release")
 
             var status = getString(R.string.connected_to, ifaces.size)
             val isSplit = daemonModel.network.callAttr("get_blockchains").asMap().size > 1
