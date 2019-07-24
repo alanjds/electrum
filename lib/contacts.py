@@ -169,7 +169,6 @@ class Contacts(util.PrintError):
         d = self._save(self.data, v1_too = False)  # Note: set v1_too = True if you want to save to v1 so older EC wallets can also see the updated contacts
         for k,v in d.items():
             self.storage.put(k, v)  # "contacts2", "contacts" are the two expected keys
-        self.storage.write()
 
     ######################
     # Import/Export File #

@@ -156,7 +156,9 @@ class ContactDialog : AlertDialogFragment() {
             val oldContact =
                 if (existingContact == null) null
                 else makeContact(existingContact!!.name, existingContact!!.addr)
-            daemonModel.wallet!!.get("contacts")!!.callAttr("add", newContact, oldContact)
+            val wallet = daemonModel.wallet!!
+            wallet.get("contacts")!!.callAttr("add", newContact, oldContact)
+            wallet.get("storage")!!.callAttr("write")
             contactsUpdate.setValue(Unit)
             dismiss()
         } catch (e: ToastException) { e.show() }
@@ -170,8 +172,10 @@ class DeleteContactDialog : AlertDialogFragment() {
         builder.setTitle(R.string.confirm_delete)
             .setMessage(R.string.are_you_sure_you_wish_to_delete)
             .setPositiveButton(R.string.delete) { _, _ ->
-                daemonModel.wallet!!.get("contacts")!!.callAttr(
+                val wallet = daemonModel.wallet!!
+                wallet.get("contacts")!!.callAttr(
                     "remove", makeContact(contact.name, contact.addr))
+                wallet.get("storage")!!.callAttr("write")
                 contactsUpdate.setValue(Unit)
                 findDialog(activity!!, ContactDialog::class)!!.dismiss()
             }
