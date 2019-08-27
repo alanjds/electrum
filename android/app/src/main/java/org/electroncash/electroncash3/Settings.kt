@@ -45,6 +45,8 @@ fun setDefaultValues(sp: SharedPreferences) {
                     libWallet.get("DEFAULT_CONFIRMED_ONLY")!!.toBoolean())
 
     // Appearance
+    setDefaultValue(sp, "cashaddr_format",
+                    clsAddress.get("FMT_UI") == clsAddress.get("FMT_CASHADDR"))
     setDefaultValue(sp, "block_explorer", libWeb.get("DEFAULT_EXPLORER")!!.toString())
 
     // Fiat
