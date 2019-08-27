@@ -2,8 +2,6 @@ package org.electroncash.electroncash3
 
 import android.app.Activity
 import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
@@ -23,7 +21,6 @@ import android.widget.Toast
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.change_password.*
 import kotlinx.android.synthetic.main.main.*
-import kotlin.properties.Delegates.notNull
 import kotlin.reflect.KClass
 
 
@@ -47,13 +44,8 @@ interface MainFragment
 
 
 class MainActivity : AppCompatActivity() {
-    var stateValid: Boolean by notNull()
     var cleanStart = true
-
-    class Model : ViewModel() {
-        var walletName: String? = null
-    }
-    val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
+    var walletName: String? = null
 
     override fun onCreate(state: Bundle?) {
         // Remove splash screen: doesn't work if called after super.onCreate.
@@ -66,9 +58,11 @@ class MainActivity : AppCompatActivity() {
 
         // If the wallet name doesn't match, the process has probably been restarted, so
         // ignore the UI state, including all dialogs.
-        stateValid = (state != null &&
-                      (state.getString("walletName") == daemonModel.walletName))
-        super.onCreate(if (stateValid) state else null)
+        if (state != null) {
+            walletName = state.getString("walletName")
+            cleanStart = (walletName != daemonModel.walletName)
+        }
+        super.onCreate(if (!cleanStart) state else null)
 
         setContentView(R.layout.main)
         setSupportActionBar(toolbar)
@@ -92,18 +86,13 @@ class MainActivity : AppCompatActivity() {
         updateToolbar()
         updateDrawer()
 
-        val walletName = daemonModel.walletName
-        if (walletName != model.walletName) {
-            model.walletName = walletName
+        val newWalletName = daemonModel.walletName
+        if (cleanStart || (newWalletName != walletName)) {
+            walletName = newWalletName
             invalidateOptionsMenu()
             clearFragments()
-            navBottom.selectedItemId = R.id.navTransactions
-        }
-        if (walletName == null) {
-            navBottom.visibility = View.GONE
-            showFragment(R.id.navNoWallet)
-        } else {
-            navBottom.visibility = View.VISIBLE
+            navBottom.selectedItemId = if (walletName == null) R.id.navNoWallet
+                                       else R.id.navTransactions
         }
     }
 
@@ -230,19 +219,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putBoolean("cleanStart", cleanStart)
-        outState.putString("walletName", daemonModel.walletName)
+        outState.putString("walletName", walletName)
     }
 
     override fun onRestoreInstanceState(state: Bundle) {
-        if (stateValid) {
+        if (!cleanStart) {
             super.onRestoreInstanceState(state)
-            cleanStart = state.getBoolean("cleanStart", true)
         }
     }
 
     override fun onPostCreate(state: Bundle?) {
-        super.onPostCreate(if (stateValid) state else null)
+        super.onPostCreate(if (!cleanStart) state else null)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -302,6 +289,8 @@ class MainActivity : AppCompatActivity() {
         // BottomNavigationView onClick is sometimes triggered after state has been saved
         // (https://github.com/Electron-Cash/Electron-Cash/issues/1091).
         ft.commitNowAllowingStateLoss()
+
+        navBottom.visibility = if (newFrag is NoWalletFragment) View.GONE else View.VISIBLE
     }
 
     fun getFragment(id: Int): Fragment? {
