@@ -45,6 +45,7 @@ interface MainFragment
 
 class MainActivity : AppCompatActivity() {
     var cleanStart = true
+    var newIntent = true
     var walletName: String? = null
 
     override fun onCreate(state: Bundle?) {
@@ -219,6 +220,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        outState.putBoolean("newIntent", newIntent)
         outState.putString("walletName", walletName)
     }
 
@@ -226,22 +228,26 @@ class MainActivity : AppCompatActivity() {
         if (!cleanStart) {
             super.onRestoreInstanceState(state)
         }
+        newIntent = state.getBoolean("newIntent")
     }
 
     override fun onPostCreate(state: Bundle?) {
         super.onPostCreate(if (!cleanStart) state else null)
     }
 
+    // setIntent only takes effect on the current instance of the activity: after a rotation,
+    // the original intent will be restored.
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         setIntent(intent)
+        newIntent = true
     }
 
     override fun onResume() {
         super.onResume()
-        val intent = getIntent()
-        if (intent != null) {
-            val uri = intent.data
+        if (newIntent) {
+            newIntent = false
+            val uri = intent?.data
             if (uri != null) {
                 if (daemonModel.wallet == null) {
                     toast(R.string.no_wallet_is_open_)
@@ -261,7 +267,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            setIntent(null)
         }
     }
 
