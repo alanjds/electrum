@@ -1,6 +1,5 @@
 package org.electroncash.electroncash3
 
-import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModel
 import android.arch.lifecycle.ViewModelProviders
@@ -19,6 +18,7 @@ import com.chaquo.python.PyObject
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.android.synthetic.main.amount_box.*
 import kotlinx.android.synthetic.main.send.*
+import kotlin.properties.Delegates.notNull
 
 
 val libPaymentRequest by lazy { libMod("paymentrequest") }
@@ -224,31 +224,24 @@ class SendDialog : AlertDialogFragment() {
 }
 
 
-class GetPaymentRequestDialog() : ProgressDialogTask<PyObject?>() {
+class GetPaymentRequestDialog() : TaskDialog<PyObject>() {
     constructor(sendDialog: SendDialog, url: String) : this() {
         setTargetFragment(sendDialog, 0)
         arguments = Bundle().apply { putString("url", url) }
     }
 
-    override fun doInBackground(): PyObject? {
+    override fun doInBackground(): PyObject {
         val pr = libPaymentRequest.callAttr("get_payment_request",
-                                            arguments!!.getString("url")!!)
-        try {
-            if (!pr.callAttr("verify", daemonModel.wallet!!.get("contacts")!!).toBoolean()) {
-                throw ToastException(pr.get("error").toString())
-            }
-            checkExpired(pr)
-            return pr
-        } catch (e: ToastException) {
-            e.show()
-            return null
+                                            arguments!!.getString("url")!!)!!
+        if (!pr.callAttr("verify", daemonModel.wallet!!.get("contacts")!!).toBoolean()) {
+            throw ToastException(pr.get("error").toString())
         }
+        checkExpired(pr)
+        return pr
     }
 
-    override fun onPostExecute(result: PyObject?) {
-        if (result != null) {
-            (targetFragment as SendDialog).setPaymentRequest(result)
-        }
+    override fun onPostExecute(result: PyObject) {
+        (targetFragment as SendDialog).setPaymentRequest(result)
     }
 }
 
@@ -280,24 +273,19 @@ class SendContactsDialog : MenuDialog() {
 }
 
 
-class SendPasswordDialog() : PasswordDialog(runInBackground = true) {
+class SendPasswordDialog() : PasswordDialog<PyObject>() {
     constructor(sendDialog: SendDialog) : this(){
         setTargetFragment(sendDialog, 0)
     }
     val sendDialog by lazy { super.getTargetFragment() as SendDialog }
-    val tx by lazy { sendDialog.makeUnsignedTransaction() }
+    var tx: PyObject by notNull()
 
-    class Model : ViewModel() {
-        val result = MutableLiveData<List<PyObject>>()
-    }
-    private val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
-
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
-        model.result.observe(this, Observer { onResult(it!!) })
+    override fun onPreExecute() {
+        super.onPreExecute()
+        tx = sendDialog.makeUnsignedTransaction()
     }
 
-    override fun onPassword(password: String) {
+    override fun onPassword(password: String): PyObject {
         val wallet = daemonModel.wallet!!
         wallet.callAttr("sign_transaction", tx, password)
         if (! daemonModel.isConnected()) {
@@ -310,26 +298,27 @@ class SendPasswordDialog() : PasswordDialog(runInBackground = true) {
             pr.callAttr("send_payment", tx.toString(), refundAddr)
         } else {
             daemonModel.network.callAttr("broadcast_transaction", tx)
-        }
-        model.result.postValue(result.asList())
-    }
+        }.asList()
 
-    fun onResult(result: List<PyObject>) {
         val success = result.get(0).toBoolean()
         if (success) {
-            sendDialog.dismiss()
-            toast(R.string.payment_sent, Toast.LENGTH_SHORT)
-            setDescription(tx.callAttr("txid").toString(),
-                           sendDialog.dialog.etDescription.text.toString())
-            transactionsUpdate.setValue(Unit)
+            return tx
         } else {
             var message = result.get(1).toString()
             val reError = Regex("^error: (.*)")
             if (message.contains(reError)) {
                 message = message.replace(reError, "$1")
             }
-            toast(message)
+            throw ToastException(message)
         }
+    }
+
+    override fun onPostExecute(result: PyObject) {
+        sendDialog.dismiss()
+        toast(R.string.payment_sent, Toast.LENGTH_SHORT)
+        setDescription(result.callAttr("txid").toString(),
+                       sendDialog.dialog.etDescription.text.toString())
+        transactionsUpdate.setValue(Unit)
     }
 }
 

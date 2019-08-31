@@ -1,9 +1,6 @@
-@file:Suppress("DEPRECATION")
-
 package org.electroncash.electroncash3
 
 import android.app.Dialog
-import android.app.ProgressDialog
 import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModel
@@ -12,14 +9,16 @@ import android.content.DialogInterface
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
 import android.support.v7.app.AlertDialog
+import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import android.widget.PopupMenu
 import android.widget.Toast
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.password.*
-import java.lang.IllegalArgumentException
+import kotlin.properties.Delegates.notNull
 
 
 abstract class AlertDialogFragment : DialogFragment() {
@@ -30,7 +29,7 @@ abstract class AlertDialogFragment : DialogFragment() {
 
     var started = false
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+    override fun onCreateDialog(savedInstanceState: Bundle?): AlertDialog {
         val builder = AlertDialog.Builder(context!!)
         onBuildDialog(builder)
         return builder.create()
@@ -112,51 +111,108 @@ abstract class MenuDialog : AlertDialogFragment() {
 }
 
 
-open class ProgressDialogFragment : DialogFragment() {
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        isCancelable = false
-        val dialog = ProgressDialog(context).apply {
-            setMessage(getString(R.string.please_wait))
-        }
-        dialog.setOnShowListener { onShowDialog(dialog) }
-        return dialog
-    }
-
-    open fun onShowDialog(dialog: ProgressDialog) {}
-}
-
-
-abstract class ProgressDialogTask<Result> : ProgressDialogFragment() {
+abstract class TaskDialog<Result> : DialogFragment() {
     class Model : ViewModel() {
-        val started = MutableLiveData<Unit>()
-        val finished = MutableLiveData<Any?>()
+        var state = Thread.State.NEW
+        val result = MutableLiveData<Any?>()
+        val exception = MutableLiveData<ToastException>()
     }
     private val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
 
-    override fun onShowDialog(dialog: ProgressDialog) {
-        if (model.started.value == null) {
-            model.started.value = Unit
-            Thread {
-                model.finished.postValue(doInBackground())
-            }.start()
-        }
-        model.finished.observe(this, Observer {
-            dismiss()
-            @Suppress("UNCHECKED_CAST")
-            onPostExecute(it as Result)
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        model.result.observe(this, Observer {
+            onFinished {
+                @Suppress("UNCHECKED_CAST")
+                onPostExecute(it as Result)
+            }
         })
+        model.exception.observe(this, Observer {
+            onFinished { it!!.show() }
+        })
+
+        isCancelable = false
+        @Suppress("DEPRECATION")
+        return android.app.ProgressDialog(this.context).apply {
+            setMessage(getString(R.string.please_wait))
+        }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (model.state == Thread.State.NEW) {
+            try {
+                model.state = Thread.State.RUNNABLE
+                onPreExecute()
+                Thread {
+                    try {
+                        model.result.postValue(doInBackground())
+                    } catch (e: ToastException) {
+                        model.exception.postValue(e)
+                    }
+                }.start()
+            } catch (e: ToastException) {
+                model.exception.postValue(e)
+            }
+        }
+    }
+
+    private fun onFinished(body: () -> Unit) {
+        if (model.state == Thread.State.RUNNABLE) {
+            model.state = Thread.State.TERMINATED
+            body()
+            dismiss()
+        }
+    }
+
+    /** This method is called on the UI thread. doInBackground will be called on the same
+     * fragment instance after it returns. If this method throws a ToastException, it will be
+     * displayed, and doInBackground will not be called. */
+    open fun onPreExecute() {}
+
+    /** This method is called on a background thread. It should not access user interface
+     * objects in any way, as they may be destroyed by rotation and other events. If this
+     * method throws a ToastException, it will be displayed, and onPostExecute will not be
+     * called. */
+    abstract fun doInBackground(): Result
+
+    /** This method is called on the UI thread after doInBackground returns. Unlike
+     * onPreExecute, it may be called on a different fragment instance. */
+    open fun onPostExecute(result: Result) {}
+}
+
+
+abstract class TaskLauncherDialog<Result> : AlertDialogFragment() {
+    override fun onShowDialog(dialog: AlertDialog) {
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            showDialog(activity!!, LaunchedTaskDialog<Result>().apply {
+                setTargetFragment(this@TaskLauncherDialog, 0)
+            })
+        }
+    }
+
+    // See notes in TaskDialog.
+    open fun onPreExecute() {}
     abstract fun doInBackground(): Result
     open fun onPostExecute(result: Result) {}
 }
 
 
-abstract class PasswordDialog(val runInBackground: Boolean = false) : AlertDialogFragment() {
-    class Model : ViewModel() {
-        val result = MutableLiveData<Boolean>()
+class LaunchedTaskDialog<Result> : TaskDialog<Result>() {
+    @Suppress("UNCHECKED_CAST")
+    val launcher by lazy { targetFragment as TaskLauncherDialog<Result> }
+
+    override fun onPreExecute() = launcher.onPreExecute()
+    override fun doInBackground() = launcher.doInBackground()
+
+    override fun onPostExecute(result: Result) {
+        launcher.onPostExecute(result)
+        launcher.dismiss()
     }
-    private val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
+}
+
+
+abstract class PasswordDialog<Result> : TaskLauncherDialog<Result>() {
+    var password: String by notNull()
 
     override fun onBuildDialog(builder: AlertDialog.Builder) {
         builder.setTitle(R.string.Enter_password)
@@ -165,57 +221,39 @@ abstract class PasswordDialog(val runInBackground: Boolean = false) : AlertDialo
             .setNegativeButton(android.R.string.cancel, null)
     }
 
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+    override fun onCreateDialog(savedInstanceState: Bundle?): AlertDialog {
         val dialog = super.onCreateDialog(savedInstanceState)
         dialog.window!!.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
         return dialog
     }
 
     override fun onShowDialog(dialog: AlertDialog) {
-        val posButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-        posButton.setOnClickListener {
-            tryPassword(dialog.etPassword.text.toString())
-        }
-        dialog.etPassword.setOnEditorActionListener { _, _, _ ->
-            posButton.performClick()
-        }
-        model.result.observe(this, Observer { onResult(it) })
-    }
-
-    fun tryPassword(password: String) {
-        model.result.value = null
-        val r = Runnable {
-            try {
-                try {
-                    onPassword(password)
-                    model.result.postValue(true)
-                } catch (e: PyException) {
-                    throw if (e.message!!.startsWith("InvalidPassword"))
-                        ToastException(R.string.incorrect_password, Toast.LENGTH_SHORT) else e
-                }
-            } catch (e: ToastException) {
-                e.show()
-                model.result.postValue(false)
+        super.onShowDialog(dialog)
+        dialog.etPassword.setOnEditorActionListener { _, actionId: Int, event: KeyEvent? ->
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                event?.action == KeyEvent.ACTION_DOWN) {
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+            } else {
+                false
             }
         }
-        if (runInBackground) {
-            showDialog(activity!!, ProgressDialogFragment())
-            Thread(r).start()
-        } else {
-            r.run()
+    }
+
+    override fun onPreExecute() {
+        password = dialog.etPassword.text.toString()
+    }
+
+    override fun doInBackground(): Result {
+        try {
+            return onPassword(password)
+        } catch (e: PyException) {
+            throw if (e.message!!.startsWith("InvalidPassword"))
+                ToastException(R.string.incorrect_password, Toast.LENGTH_SHORT) else e
         }
     }
 
     /** Attempt to perform the operation with the given password. If the operation fails, this
      * method should throw either a ToastException, or an InvalidPassword PyException (most
      * Python functions that take passwords will do this automatically). */
-    abstract fun onPassword(password: String)
-
-    private fun onResult(success: Boolean?) {
-        if (success == null) return
-        dismissDialog(activity!!, ProgressDialogFragment::class)
-        if (success) {
-            dismiss()
-        }
-    }
+    abstract fun onPassword(password: String): Result
 }

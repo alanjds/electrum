@@ -1,10 +1,6 @@
 package org.electroncash.electroncash3
 
 import android.app.Dialog
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
 import android.content.Intent
 import android.os.Bundle
 import android.support.v4.app.DialogFragment
@@ -17,6 +13,7 @@ import com.chaquo.python.PyException
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.android.synthetic.main.new_wallet.*
 import kotlinx.android.synthetic.main.new_wallet_2.*
+import kotlin.properties.Delegates.notNull
 
 
 val libKeystore by lazy { libMod("keystore") }
@@ -81,11 +78,8 @@ fun confirmPassword(dialog: Dialog): String {
 }
 
 
-abstract class NewWalletDialog2 : AlertDialogFragment() {
-    class Model : ViewModel() {
-        val result = MutableLiveData<Boolean>()
-    }
-    private val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
+abstract class NewWalletDialog2 : TaskLauncherDialog<Unit>() {
+    var input: String by notNull()
 
     override fun onBuildDialog(builder: AlertDialog.Builder) {
         builder.setTitle(R.string.New_wallet)
@@ -94,41 +88,30 @@ abstract class NewWalletDialog2 : AlertDialogFragment() {
             .setNegativeButton(R.string.back, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            model.result.value = null
-            showDialog(activity!!, ProgressDialogFragment())
-            Thread {
-                try {
-                    val name = arguments!!.getString("name")!!
-                    val password = arguments!!.getString("password")!!
-                    onCreateWallet(name, password, dialog.etInput.text.toString())
-                    daemonModel.loadWallet(name, password)
-                    model.result.postValue(true)
-                } catch (e: ToastException) {
-                    e.show()
-                    model.result.postValue(false)
-                }
-            }.start()
-        }
-        model.result.observe(this, Observer { onResult(it) })
+    override fun onPreExecute() {
+        input = dialog.etInput.text.toString()
     }
 
-    abstract fun onCreateWallet(name: String, password: String, input: String)
+    override fun doInBackground() {
+        val name = arguments!!.getString("name")!!
+        val password = arguments!!.getString("password")!!
+        onCreateWallet(name, password)
+        daemonModel.loadWallet(name, password)
+    }
 
-    fun onResult(success: Boolean?) {
-        if (success == null) return
-        dismissDialog(activity!!, ProgressDialogFragment::class)
-        if (success) {
-            dismiss()
-            dismissDialog(activity!!, NewWalletDialog1::class)
-        }
+    abstract fun onCreateWallet(name: String, password: String)
+
+    override fun onPostExecute(result: Unit) {
+        dismissDialog(activity!!, NewWalletDialog1::class)
     }
 }
 
 
 class NewWalletSeedDialog : NewWalletDialog2() {
+    var passphrase: String by notNull()
+    var bip39: Boolean by notNull()
+    var derivation: String? = null
+
     override fun onShowDialog(dialog: AlertDialog) {
         super.onShowDialog(dialog)
         setupSeedDialog(this)
@@ -140,22 +123,25 @@ class NewWalletSeedDialog : NewWalletDialog2() {
         }
     }
 
-    override fun onCreateWallet(name: String, password: String, input: String) {
-        try {
-            val derivation: String?
-            if (dialog.swBip39.isChecked) {
-                derivation = dialog.etDerivation.text.toString()
-                if (!libBitcoin.callAttr("is_bip32_derivation", derivation).toBoolean()) {
-                    throw ToastException(R.string.derivation_invalid)
-                }
-            } else {
-                derivation = null
-            }
+    override fun onPreExecute() {
+        super.onPreExecute()
+        passphrase = dialog.etPassphrase.text.toString()
+        bip39 = dialog.swBip39.isChecked
+        if (bip39) {
+            derivation = dialog.etDerivation.text.toString()
+        }
+    }
 
+    override fun onCreateWallet(name: String, password: String) {
+        try {
+            if (derivation != null &&
+                !libBitcoin.callAttr("is_bip32_derivation", derivation).toBoolean()) {
+                throw ToastException(R.string.derivation_invalid)
+            }
             daemonModel.commands.callAttr(
                 "create", name, password,
                 Kwarg("seed", input),
-                Kwarg("passphrase", dialog.etPassphrase.text.toString()),
+                Kwarg("passphrase", passphrase),
                 Kwarg("bip39_derivation", derivation))
         } catch (e: PyException) {
             if (e.message!!.startsWith("InvalidSeed")) {
@@ -179,7 +165,7 @@ class NewWalletImportDialog : NewWalletDialog2() {
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { scanQR(this) }
     }
 
-    override fun onCreateWallet(name: String, password: String, input: String) {
+    override fun onCreateWallet(name: String, password: String) {
         var foundAddress = false
         var foundPrivkey = false
         for (word in input.split(Regex("\\s+"))) {
@@ -246,7 +232,7 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
         }
     }
 
-    override fun onCreateWallet(name: String, password: String, input: String) {
+    override fun onCreateWallet(name: String, password: String) {
         val key = input.trim()
         if (libKeystore.callAttr("is_bip32_key", key).toBoolean()) {
             daemonModel.commands.callAttr("create", name, password, Kwarg("master", key))
