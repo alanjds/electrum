@@ -136,7 +136,7 @@ class NewWalletSeedDialog : NewWalletDialog2() {
         try {
             if (derivation != null &&
                 !libBitcoin.callAttr("is_bip32_derivation", derivation).toBoolean()) {
-                throw ToastException(R.string.derivation_invalid)
+                throw ToastException(R.string.Derivation_invalid)
             }
             daemonModel.commands.callAttr(
                 "create", name, password,
