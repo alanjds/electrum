@@ -230,12 +230,12 @@ abstract class PasswordDialog<Result> : TaskLauncherDialog<Result>() {
     override fun onShowDialog(dialog: AlertDialog) {
         super.onShowDialog(dialog)
         dialog.etPassword.setOnEditorActionListener { _, actionId: Int, event: KeyEvent? ->
+            // See comments in ConsoleActivity.createInput.
             if (actionId == EditorInfo.IME_ACTION_DONE ||
-                event?.action == KeyEvent.ACTION_DOWN) {
+                event?.action == KeyEvent.ACTION_UP) {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
-            } else {
-                false
             }
+            true
         }
     }
 
