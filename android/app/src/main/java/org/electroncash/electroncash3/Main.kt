@@ -290,10 +290,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         ft.attach(newFrag)
-
-        // BottomNavigationView onClick is sometimes triggered after state has been saved
-        // (https://github.com/Electron-Cash/Electron-Cash/issues/1091).
-        ft.commitNowAllowingStateLoss()
+        ft.commit()
 
         navBottom.visibility = if (newFrag is NoWalletFragment) View.GONE else View.VISIBLE
     }
@@ -310,7 +307,7 @@ class MainActivity : AppCompatActivity() {
             frag = FRAGMENTS[id]!!.java.newInstance()
             supportFragmentManager.beginTransaction()
                 .add(flContent.id, frag, fragTag(id))
-                .commitNowAllowingStateLoss()
+                .commit()
             return frag
         }
     }
@@ -323,7 +320,7 @@ class MainActivity : AppCompatActivity() {
                 ft.remove(frag)
             }
         }
-        ft.commitNowAllowingStateLoss()
+        ft.commit()
     }
 
     fun fragTag(id: Int) = "MainFragment:$id"

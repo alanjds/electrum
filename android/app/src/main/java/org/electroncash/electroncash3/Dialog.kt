@@ -60,6 +60,11 @@ abstract class AlertDialogFragment : DialogFragment() {
      * after a rotation. This can be used to do things like setting the initial state of
      * editable views. */
     open fun onFirstShowDialog(dialog: AlertDialog) {}
+
+    // TODO override onCreateView so we don't have to find views via the dialog.
+    override fun getDialog(): Dialog {
+        return super.getDialog()!!
+    }
 }
 
 

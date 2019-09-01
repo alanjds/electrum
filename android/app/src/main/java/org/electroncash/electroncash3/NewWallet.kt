@@ -243,7 +243,7 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
 }
 
 
-fun setupSeedDialog(fragment: DialogFragment) {
+fun setupSeedDialog(fragment: AlertDialogFragment) {
     with (fragment.dialog) {
         val seed = fragment.arguments!!.getString("seed")
         if (seed == null) {
