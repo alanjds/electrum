@@ -22,7 +22,7 @@ val libContacts by lazy { libMod("contacts") }
 val contactsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class ContactsFragment : androidx.fragment.app.Fragment(), MainFragment {
+class ContactsFragment : Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.contacts, container, false)
@@ -49,7 +49,7 @@ class ContactsFragment : androidx.fragment.app.Fragment(), MainFragment {
 }
 
 
-class ContactsAdapter(val activity: androidx.fragment.app.FragmentActivity)
+class ContactsAdapter(val activity: FragmentActivity)
     : BoundAdapter<ContactModel>(R.layout.contact_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<ContactModel>, position: Int) {

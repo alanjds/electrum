@@ -41,7 +41,7 @@ class NewWalletDialog1 : AlertDialogFragment() {
                 }
                 val password = confirmPassword(dialog)
 
-                val nextDialog: androidx.fragment.app.DialogFragment
+                val nextDialog: DialogFragment
                 val arguments = Bundle().apply {
                     putString("name", name)
                     putString("password", password)
@@ -243,7 +243,7 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
 }
 
 
-fun setupSeedDialog(fragment: androidx.fragment.app.DialogFragment) {
+fun setupSeedDialog(fragment: DialogFragment) {
     with (fragment.dialog) {
         val seed = fragment.arguments!!.getString("seed")
         if (seed == null) {

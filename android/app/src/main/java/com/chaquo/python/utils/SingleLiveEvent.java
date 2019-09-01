@@ -39,12 +39,13 @@ public class SingleLiveEvent<T> extends MutableLiveData<T> {
 
     private static final String TAG = "SingleLiveEvent";
 
-    private Observer<T> mObserver, mObserverWrapper;
+    private Observer<? super T> mObserver;
+    private Observer<T> mObserverWrapper;
 
     private final AtomicBoolean mPending = new AtomicBoolean(false);
 
     @MainThread
-    public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<T> observer) {
+    public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer) {
         if (mObserver != null) {
             throw new IllegalStateException
                 ("Cannot register multiple observers on a SingleLiveEvent");
@@ -63,7 +64,7 @@ public class SingleLiveEvent<T> extends MutableLiveData<T> {
     }
 
     @Override
-    public void removeObserver(@NonNull Observer<T> observer) {
+    public void removeObserver(@NonNull Observer<? super T> observer) {
         if (observer == mObserverWrapper ||  // Will happen when lifecycle owner is destroyed.
             observer == mObserver) {
             super.removeObserver(mObserverWrapper);

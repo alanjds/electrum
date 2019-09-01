@@ -20,7 +20,7 @@ import kotlinx.android.synthetic.main.requests.*
 val requestsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class RequestsFragment : androidx.fragment.app.Fragment(), MainFragment {
+class RequestsFragment : Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.requests, container, false)
@@ -47,7 +47,7 @@ class RequestsFragment : androidx.fragment.app.Fragment(), MainFragment {
 }
 
 
-fun newRequest(activity: androidx.fragment.app.FragmentActivity) {
+fun newRequest(activity: FragmentActivity) {
     try {
         val address = daemonModel.wallet!!.callAttr("get_unused_address")
                       ?: throw ToastException(R.string.no_more)
@@ -67,7 +67,7 @@ class RequestsList(wallet: PyObject) : AbstractList<RequestModel>() {
 }
 
 
-class RequestsAdapter(val activity: androidx.fragment.app.FragmentActivity)
+class RequestsAdapter(val activity: FragmentActivity)
     : BoundAdapter<RequestModel>(R.layout.request_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<RequestModel>, position: Int) {

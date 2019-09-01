@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 val transactionsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class TransactionsFragment : androidx.fragment.app.Fragment(), MainFragment {
+class TransactionsFragment : Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.transactions, container, false)
@@ -67,7 +67,7 @@ class TransactionsList(wallet: PyObject, addr: PyObject? = null)
 }
 
 
-class TransactionsAdapter(val activity: androidx.fragment.app.FragmentActivity)
+class TransactionsAdapter(val activity: FragmentActivity)
     : BoundAdapter<TransactionModel>(R.layout.transaction_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<TransactionModel>, position: Int) {

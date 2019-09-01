@@ -21,7 +21,7 @@ import kotlinx.android.synthetic.main.password.*
 import kotlin.properties.Delegates.notNull
 
 
-abstract class AlertDialogFragment : androidx.fragment.app.DialogFragment() {
+abstract class AlertDialogFragment : DialogFragment() {
     class Model : ViewModel() {
         var started = false
     }
@@ -111,7 +111,7 @@ abstract class MenuDialog : AlertDialogFragment() {
 }
 
 
-abstract class TaskDialog<Result> : androidx.fragment.app.DialogFragment() {
+abstract class TaskDialog<Result> : DialogFragment() {
     class Model : ViewModel() {
         var state = Thread.State.NEW
         val result = MutableLiveData<Any?>()

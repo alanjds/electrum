@@ -34,7 +34,7 @@ val clsAddress by lazy { libAddress["Address"]!! }
 val addressLabelUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class AddressesFragment : androidx.fragment.app.Fragment(), MainFragment {
+class AddressesFragment : Fragment(), MainFragment {
     
     class Model : ViewModel() {
         val filterType = MutableLiveData<Int>().apply { value = R.id.filterAll }
@@ -107,7 +107,7 @@ class AddressesFragment : androidx.fragment.app.Fragment(), MainFragment {
 }
 
 
-class AddressesAdapter(val activity: androidx.fragment.app.FragmentActivity)
+class AddressesAdapter(val activity: FragmentActivity)
     : BoundAdapter<AddressModel>(R.layout.address_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<AddressModel>, position: Int) {

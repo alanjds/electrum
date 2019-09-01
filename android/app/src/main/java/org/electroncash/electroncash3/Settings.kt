@@ -130,7 +130,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     override fun onDisplayPreferenceDialog(preference: Preference) {
-        var dialog: androidx.fragment.app.DialogFragment? = null
+        var dialog: DialogFragment? = null
         if (preference is ServerPreference) {
             dialog = ServerPreferenceDialog()
         }

@@ -10,7 +10,7 @@ import com.google.zxing.integration.android.IntentIntegrator
 import com.journeyapps.barcodescanner.BarcodeEncoder
 
 
-fun scanQR(fragment: androidx.fragment.app.Fragment) {
+fun scanQR(fragment: Fragment) {
     IntentIntegrator.forSupportFragment(fragment)
         .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
         .setPrompt("")

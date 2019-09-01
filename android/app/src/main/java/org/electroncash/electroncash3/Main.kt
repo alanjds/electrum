@@ -32,7 +32,7 @@ val ACTIVITIES = HashMap<Int, KClass<out Activity>>().apply {
 }
 
 // Bottom navigation
-val FRAGMENTS = HashMap<Int, KClass<out androidx.fragment.app.Fragment>>().apply {
+val FRAGMENTS = HashMap<Int, KClass<out Fragment>>().apply {
     put(R.id.navNoWallet, NoWalletFragment::class)
     put(R.id.navTransactions, TransactionsFragment::class)
     put(R.id.navRequests, RequestsFragment::class)
@@ -298,11 +298,11 @@ class MainActivity : AppCompatActivity() {
         navBottom.visibility = if (newFrag is NoWalletFragment) View.GONE else View.VISIBLE
     }
 
-    fun getFragment(id: Int): androidx.fragment.app.Fragment? {
+    fun getFragment(id: Int): Fragment? {
         return supportFragmentManager.findFragmentByTag(fragTag(id))
     }
 
-    fun getOrCreateFragment(id: Int): androidx.fragment.app.Fragment {
+    fun getOrCreateFragment(id: Int): Fragment {
         var frag = getFragment(id)
         if (frag != null) {
             return frag
@@ -330,7 +330,7 @@ class MainActivity : AppCompatActivity() {
 }
 
 
-class NoWalletFragment : androidx.fragment.app.Fragment(), MainFragment {
+class NoWalletFragment : Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.no_wallet, container, false)

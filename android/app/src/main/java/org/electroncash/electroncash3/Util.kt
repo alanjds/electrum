@@ -57,7 +57,7 @@ fun formatSatoshisAndUnit(amount: Long): String {
 }
 
 
-fun showDialog(activity: androidx.fragment.app.FragmentActivity, frag: androidx.fragment.app.DialogFragment) {
+fun showDialog(activity: FragmentActivity, frag: DialogFragment) {
     val fm = activity.supportFragmentManager
     val tag = frag::class.java.name
     if (fm.findFragmentByTag(tag) == null) {
@@ -65,11 +65,11 @@ fun showDialog(activity: androidx.fragment.app.FragmentActivity, frag: androidx.
     }
 }
 
-fun <T: androidx.fragment.app.DialogFragment> dismissDialog(activity: androidx.fragment.app.FragmentActivity, fragClass: KClass<T>) {
+fun <T: DialogFragment> dismissDialog(activity: FragmentActivity, fragClass: KClass<T>) {
     findDialog(activity, fragClass)?.dismiss()
 }
 
-fun <T: androidx.fragment.app.DialogFragment> findDialog(activity: androidx.fragment.app.FragmentActivity, fragClass: KClass<T>) : T? {
+fun <T: DialogFragment> findDialog(activity: FragmentActivity, fragClass: KClass<T>) : T? {
     val tag = fragClass.java.name
     val frag = activity.supportFragmentManager.findFragmentByTag(tag)
     if (frag == null) {
@@ -157,13 +157,13 @@ fun <T: Any> getSystemService(kcls: KClass<T>): T {
 }
 
 
-fun setupVerticalList(rv: androidx.recyclerview.widget.RecyclerView) {
-    rv.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(rv.context)
+fun setupVerticalList(rv: RecyclerView) {
+    rv.layoutManager = LinearLayoutManager(rv.context)
 
     // Dialog theme has listDivider set to null, so use the base app theme instead.
     rv.addItemDecoration(
-        androidx.recyclerview.widget.DividerItemDecoration(ContextThemeWrapper(rv.context, R.style.AppTheme),
-                                                           androidx.recyclerview.widget.DividerItemDecoration.VERTICAL))
+        DividerItemDecoration(ContextThemeWrapper(rv.context, R.style.AppTheme),
+                                                           DividerItemDecoration.VERTICAL))
 }
 
 
@@ -171,7 +171,7 @@ fun setupVerticalList(rv: androidx.recyclerview.widget.RecyclerView) {
 // the diff process was too slow when comparing long transaction lists. However, we do emulate
 // its API here in case we try it again in the future.
 open class BoundAdapter<T: Any>(val layoutId: Int)
-    : androidx.recyclerview.widget.RecyclerView.Adapter<BoundViewHolder<T>>() {
+    : RecyclerView.Adapter<BoundViewHolder<T>>() {
 
     var list: List<T> = listOf()
 
@@ -201,7 +201,7 @@ open class BoundAdapter<T: Any>(val layoutId: Int)
 }
 
 class BoundViewHolder<T: Any>(val binding: ViewDataBinding)
-    : androidx.recyclerview.widget.RecyclerView.ViewHolder(binding.root) {
+    : RecyclerView.ViewHolder(binding.root) {
 
     lateinit var item: T
 }
