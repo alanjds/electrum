@@ -1,14 +1,14 @@
 package org.electroncash.electroncash3
 
-import android.arch.lifecycle.LiveData
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
-import android.support.v7.app.AlertDialog
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AlertDialog
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -34,7 +34,7 @@ val clsAddress by lazy { libAddress["Address"]!! }
 val addressLabelUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class AddressesFragment : Fragment(), MainFragment {
+class AddressesFragment : androidx.fragment.app.Fragment(), MainFragment {
     
     class Model : ViewModel() {
         val filterType = MutableLiveData<Int>().apply { value = R.id.filterAll }
@@ -107,7 +107,7 @@ class AddressesFragment : Fragment(), MainFragment {
 }
 
 
-class AddressesAdapter(val activity: FragmentActivity)
+class AddressesAdapter(val activity: androidx.fragment.app.FragmentActivity)
     : BoundAdapter<AddressModel>(R.layout.address_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<AddressModel>, position: Int) {

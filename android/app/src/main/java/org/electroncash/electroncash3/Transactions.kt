@@ -1,13 +1,13 @@
 package org.electroncash.electroncash3
 
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,7 +22,7 @@ import kotlin.math.roundToInt
 val transactionsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class TransactionsFragment : Fragment(), MainFragment {
+class TransactionsFragment : androidx.fragment.app.Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.transactions, container, false)
@@ -67,7 +67,7 @@ class TransactionsList(wallet: PyObject, addr: PyObject? = null)
 }
 
 
-class TransactionsAdapter(val activity: FragmentActivity)
+class TransactionsAdapter(val activity: androidx.fragment.app.FragmentActivity)
     : BoundAdapter<TransactionModel>(R.layout.transaction_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<TransactionModel>, position: Int) {

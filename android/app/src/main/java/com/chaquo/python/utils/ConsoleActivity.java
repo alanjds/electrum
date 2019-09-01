@@ -1,14 +1,13 @@
 package com.chaquo.python.utils;
 
 import android.app.*;
-import android.arch.lifecycle.*;
+import androidx.lifecycle.*;
 import android.content.*;
 import android.content.res.*;
 import android.graphics.*;
 import android.os.*;
-import android.support.annotation.*;
-import android.support.v4.content.*;
-import android.support.v7.app.*;
+import androidx.core.content.*;
+import androidx.appcompat.app.*;
 import android.text.*;
 import android.text.style.*;
 import android.view.*;

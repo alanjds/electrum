@@ -1,11 +1,11 @@
 package org.electroncash.electroncash3
 
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
-import android.support.v7.app.AlertDialog
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AlertDialog
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -20,7 +20,7 @@ import kotlinx.android.synthetic.main.requests.*
 val requestsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class RequestsFragment : Fragment(), MainFragment {
+class RequestsFragment : androidx.fragment.app.Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.requests, container, false)
@@ -47,7 +47,7 @@ class RequestsFragment : Fragment(), MainFragment {
 }
 
 
-fun newRequest(activity: FragmentActivity) {
+fun newRequest(activity: androidx.fragment.app.FragmentActivity) {
     try {
         val address = daemonModel.wallet!!.callAttr("get_unused_address")
                       ?: throw ToastException(R.string.no_more)
@@ -67,7 +67,7 @@ class RequestsList(wallet: PyObject) : AbstractList<RequestModel>() {
 }
 
 
-class RequestsAdapter(val activity: FragmentActivity)
+class RequestsAdapter(val activity: androidx.fragment.app.FragmentActivity)
     : BoundAdapter<RequestModel>(R.layout.request_list) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<RequestModel>, position: Int) {

@@ -1,14 +1,14 @@
 package org.electroncash.electroncash3
 
 import android.app.Dialog
-import android.arch.lifecycle.MutableLiveData
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModel
-import android.arch.lifecycle.ViewModelProviders
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProviders
 import android.content.DialogInterface
 import android.os.Bundle
-import android.support.v4.app.DialogFragment
-import android.support.v7.app.AlertDialog
+import androidx.fragment.app.DialogFragment
+import androidx.appcompat.app.AlertDialog
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
@@ -21,7 +21,7 @@ import kotlinx.android.synthetic.main.password.*
 import kotlin.properties.Delegates.notNull
 
 
-abstract class AlertDialogFragment : DialogFragment() {
+abstract class AlertDialogFragment : androidx.fragment.app.DialogFragment() {
     class Model : ViewModel() {
         var started = false
     }
@@ -111,7 +111,7 @@ abstract class MenuDialog : AlertDialogFragment() {
 }
 
 
-abstract class TaskDialog<Result> : DialogFragment() {
+abstract class TaskDialog<Result> : androidx.fragment.app.DialogFragment() {
     class Model : ViewModel() {
         var state = Thread.State.NEW
         val result = MutableLiveData<Any?>()

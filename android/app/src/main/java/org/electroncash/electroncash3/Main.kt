@@ -1,13 +1,13 @@
 package org.electroncash.electroncash3
 
 import android.app.Activity
-import android.arch.lifecycle.Observer
+import androidx.lifecycle.Observer
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import android.text.Html
 import android.text.SpannableStringBuilder
 import android.text.method.LinkMovementMethod
@@ -32,7 +32,7 @@ val ACTIVITIES = HashMap<Int, KClass<out Activity>>().apply {
 }
 
 // Bottom navigation
-val FRAGMENTS = HashMap<Int, KClass<out Fragment>>().apply {
+val FRAGMENTS = HashMap<Int, KClass<out androidx.fragment.app.Fragment>>().apply {
     put(R.id.navNoWallet, NoWalletFragment::class)
     put(R.id.navTransactions, TransactionsFragment::class)
     put(R.id.navRequests, RequestsFragment::class)
@@ -298,11 +298,11 @@ class MainActivity : AppCompatActivity() {
         navBottom.visibility = if (newFrag is NoWalletFragment) View.GONE else View.VISIBLE
     }
 
-    fun getFragment(id: Int): Fragment? {
+    fun getFragment(id: Int): androidx.fragment.app.Fragment? {
         return supportFragmentManager.findFragmentByTag(fragTag(id))
     }
 
-    fun getOrCreateFragment(id: Int): Fragment {
+    fun getOrCreateFragment(id: Int): androidx.fragment.app.Fragment {
         var frag = getFragment(id)
         if (frag != null) {
             return frag
@@ -330,7 +330,7 @@ class MainActivity : AppCompatActivity() {
 }
 
 
-class NoWalletFragment : Fragment(), MainFragment {
+class NoWalletFragment : androidx.fragment.app.Fragment(), MainFragment {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.no_wallet, container, false)

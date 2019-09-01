@@ -1,6 +1,6 @@
 package org.electroncash.electroncash3
 
-import android.support.v4.app.Fragment
+import androidx.fragment.app.Fragment
 import android.widget.ImageView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -10,7 +10,7 @@ import com.google.zxing.integration.android.IntentIntegrator
 import com.journeyapps.barcodescanner.BarcodeEncoder
 
 
-fun scanQR(fragment: Fragment) {
+fun scanQR(fragment: androidx.fragment.app.Fragment) {
     IntentIntegrator.forSupportFragment(fragment)
         .setDesiredBarcodeFormats(IntentIntegrator.QR_CODE)
         .setPrompt("")

@@ -1,15 +1,15 @@
 package org.electroncash.electroncash3
 
 import android.app.Dialog
-import android.arch.lifecycle.Observer
+import androidx.lifecycle.Observer
 import android.content.Context
 import android.os.Bundle
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentActivity
-import android.support.v7.app.AlertDialog
-import android.support.v7.app.AppCompatActivity
-import android.support.v7.preference.EditTextPreference
-import android.support.v7.preference.EditTextPreferenceDialogFragmentCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.EditTextPreference
+import androidx.preference.EditTextPreferenceDialogFragmentCompat
 import android.text.InputType
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -50,7 +50,7 @@ class NetworkActivity : AppCompatActivity() {
 }
 
 
-class NetworkFragment : Fragment() {
+class NetworkFragment : androidx.fragment.app.Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.network, container, false)
@@ -89,7 +89,7 @@ class NetworkFragment : Fragment() {
 }
 
 
-class IfacesAdapter(val activity: FragmentActivity)
+class IfacesAdapter(val activity: androidx.fragment.app.FragmentActivity)
     : BoundAdapter<IfaceModel>(R.layout.iface) {
 
     override fun onBindViewHolder(holder: BoundViewHolder<IfaceModel>, position: Int) {

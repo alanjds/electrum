@@ -3,8 +3,8 @@ package org.electroncash.electroncash3
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import android.support.v4.app.DialogFragment
-import android.support.v7.app.AlertDialog
+import androidx.fragment.app.DialogFragment
+import androidx.appcompat.app.AlertDialog
 import android.text.Selection
 import android.view.View
 import android.widget.Toast
@@ -41,7 +41,7 @@ class NewWalletDialog1 : AlertDialogFragment() {
                 }
                 val password = confirmPassword(dialog)
 
-                val nextDialog: DialogFragment
+                val nextDialog: androidx.fragment.app.DialogFragment
                 val arguments = Bundle().apply {
                     putString("name", name)
                     putString("password", password)
@@ -243,7 +243,7 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
 }
 
 
-fun setupSeedDialog(fragment: DialogFragment) {
+fun setupSeedDialog(fragment: androidx.fragment.app.DialogFragment) {
     with (fragment.dialog) {
         val seed = fragment.arguments!!.getString("seed")
         if (seed == null) {

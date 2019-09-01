@@ -1,6 +1,6 @@
 package org.electroncash.electroncash3
 
-import android.arch.lifecycle.MutableLiveData
+import androidx.lifecycle.MutableLiveData
 import android.widget.Toast
 import com.chaquo.python.PyException
 import com.chaquo.python.PyObject

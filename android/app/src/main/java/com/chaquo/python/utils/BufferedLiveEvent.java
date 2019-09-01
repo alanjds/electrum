@@ -1,7 +1,6 @@
 package com.chaquo.python.utils;
 
 import android.os.*;
-import android.support.annotation.*;
 import java.util.*;
 
 /** Similar to SimpleLiveEvent, but any values set while inactive will be buffered. As soon as
