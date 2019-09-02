@@ -114,8 +114,8 @@ private fun getFieldValue(obj: Any, fieldName: String): Any? {
 }
 
 private fun getDeclaredField(obj: Any, name: String): Field {
-    var klass: Class<*> = obj.javaClass
-    while (klass != Any::class.java) {
+    var klass: Class<*>? = obj.javaClass
+    while (klass != null) {
         try {
             return klass.getDeclaredField(name)
         } catch (e: NoSuchFieldException) {}
