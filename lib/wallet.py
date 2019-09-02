@@ -66,6 +66,7 @@ from .paymentrequest import PR_PAID, PR_UNPAID, PR_UNKNOWN, PR_EXPIRED
 from .paymentrequest import InvoiceStore
 from .contacts import Contacts
 from . import cashacct
+from . import slp
 
 def _(message): return message
 
@@ -94,49 +95,54 @@ def dust_threshold(network):
     return 546 # hard-coded Bitcoin Cash dust threshold. Was changed to this as of Sept. 2018
 
 
-def append_utxos_to_inputs(inputs, network, pubkey, txin_type, imax):
-    if txin_type == 'p2pkh':
-        address = Address.from_pubkey(pubkey)
-    else:
-        address = PublicKey.from_pubkey(pubkey)
-    sh = address.to_scripthash_hex()
-    u = network.synchronous_get(('blockchain.scripthash.listunspent', [sh]))
-    for item in u:
-        if len(inputs) >= imax:
-            break
-        item['address'] = address
-        item['type'] = txin_type
-        item['prevout_hash'] = item['tx_hash']
-        item['prevout_n'] = item['tx_pos']
-        item['pubkeys'] = [pubkey]
-        item['x_pubkeys'] = [pubkey]
-        item['signatures'] = [None]
-        item['num_sig'] = 1
-        inputs.append(item)
-
 def sweep_preparations(privkeys, network, imax=100):
+    class InputsMaxxed(Exception):
+        pass
+
+    def append_utxos_to_inputs(inputs, pubkey, txin_type):
+        if txin_type == 'p2pkh':
+            address = Address.from_pubkey(pubkey)
+        else:
+            address = PublicKey.from_pubkey(pubkey)
+        sh = address.to_scripthash_hex()
+        u = network.synchronous_get(('blockchain.scripthash.listunspent', [sh]))
+        for item in u:
+            if len(inputs) >= imax:
+                raise InputsMaxxed()
+            item['address'] = address
+            item['type'] = txin_type
+            item['prevout_hash'] = item['tx_hash']
+            item['prevout_n'] = item['tx_pos']
+            item['pubkeys'] = [pubkey]
+            item['x_pubkeys'] = [pubkey]
+            item['signatures'] = [None]
+            item['num_sig'] = 1
+            inputs.append(item)
 
     def find_utxos_for_privkey(txin_type, privkey, compressed):
         pubkey = bitcoin.public_key_from_private_key(privkey, compressed)
-        append_utxos_to_inputs(inputs, network, pubkey, txin_type, imax)
+        append_utxos_to_inputs(inputs, pubkey, txin_type)
         keypairs[pubkey] = privkey, compressed
 
     inputs = []
     keypairs = {}
-    for sec in privkeys:
-        txin_type, privkey, compressed = bitcoin.deserialize_privkey(sec)
-        find_utxos_for_privkey(txin_type, privkey, compressed)
-        # do other lookups to increase support coverage
-        if is_minikey(sec):
-            # minikeys don't have a compressed byte
-            # we lookup both compressed and uncompressed pubkeys
-            find_utxos_for_privkey(txin_type, privkey, not compressed)
-        elif txin_type == 'p2pkh':
-            # WIF serialization does not distinguish p2pkh and p2pk
-            # we also search for pay-to-pubkey outputs
-            find_utxos_for_privkey('p2pk', privkey, compressed)
-        elif txin_type == 'p2sh':
-            raise ValueError(_("The specified WIF key '{}' is a p2sh WIF key. These key types cannot be swept.").format(sec))
+    try:
+        for sec in privkeys:
+            txin_type, privkey, compressed = bitcoin.deserialize_privkey(sec)
+            find_utxos_for_privkey(txin_type, privkey, compressed)
+            # do other lookups to increase support coverage
+            if is_minikey(sec):
+                # minikeys don't have a compressed byte
+                # we lookup both compressed and uncompressed pubkeys
+                find_utxos_for_privkey(txin_type, privkey, not compressed)
+            elif txin_type == 'p2pkh':
+                # WIF serialization does not distinguish p2pkh and p2pk
+                # we also search for pay-to-pubkey outputs
+                find_utxos_for_privkey('p2pk', privkey, compressed)
+            elif txin_type == 'p2sh':
+                raise ValueError(_("The specified WIF key '{}' is a p2sh WIF key. These key types cannot be swept.").format(sec))
+    except InputsMaxxed:
+        pass
     if not inputs:
         raise ValueError(_('No inputs found. (Note that inputs need to be confirmed)'))
     return inputs, keypairs
@@ -150,9 +156,9 @@ def sweep(privkeys, network, config, recipient, fee=None, imax=100, sign_schnorr
         tx = Transaction.from_io(inputs, outputs, sign_schnorr=sign_schnorr)
         fee = config.estimate_fee(tx.estimated_size())
     if total - fee < 0:
-        raise BaseException(_('Not enough funds on address.') + '\nTotal: %d satoshis\nFee: %d'%(total, fee))
+        raise NotEnoughFunds(_('Not enough funds on address.') + '\nTotal: %d satoshis\nFee: %d'%(total, fee))
     if total - fee < dust_threshold(network):
-        raise BaseException(_('Not enough funds on address.') + '\nTotal: %d satoshis\nFee: %d\nDust Threshold: %d'%(total, fee, dust_threshold(network)))
+        raise NotEnoughFunds(_('Not enough funds on address.') + '\nTotal: %d satoshis\nFee: %d\nDust Threshold: %d'%(total, fee, dust_threshold(network)))
 
     outputs = [(TYPE_ADDRESS, recipient, total - fee)]
     locktime = network.get_local_height()
@@ -183,7 +189,9 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         # start_threads. Note: object instantiation should be lightweight here.
         # self.cashacct.load() is called later in this function to load data.
         self.cashacct = cashacct.CashAcct(self)
+        self.slp = slp.WalletData(self)
         finalization_print_error(self.cashacct)  # debug object lifecycle
+        finalization_print_error(self.slp)  # debug object lifecycle
 
         # Cache of Address -> (c,u,x) balance. This cache is used by
         # get_addr_balance to significantly speed it up (it is called a lot).
@@ -256,6 +264,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         # cashacct is started in start_threads, but it needs to have relevant
         # data here, before the below calls happen
         self.cashacct.load()
+        self.slp.load()  # try to load first so we can pick up the remove_transaction hook from load_transactions if need be
 
         # Now, finally, after object is constructed -- we can do this
         self.load_keystore()
@@ -263,8 +272,12 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         self.load_transactions()
         self.build_reverse_history()
 
-
         self.check_history()
+
+        if self.slp.need_rebuild:
+            # load failed, must rebuild from self.transactions
+            self.slp.rebuild()
+            self.slp.save()  # commit changes to self.storage
 
         # Print debug message on finalization
         finalization_print_error(self, "[{}/{}] finalized".format(type(self).__name__, self.diagnostic_name()))
@@ -308,6 +321,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
                 self.print_error("removing unreferenced tx", tx_hash)
                 self.transactions.pop(tx_hash)
                 self.cashacct.remove_transaction_hook(tx_hash)
+                self.slp.rm_tx(tx_hash)
 
     @profiler
     def save_transactions(self, write=False):
@@ -326,6 +340,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
             self.storage.put('pruned_txo', self.pruned_txo)
             history = self.from_Address_dict(self._history)
             self.storage.put('addr_history', history)
+            self.slp.save()
             if write:
                 self.storage.write()
 
@@ -342,6 +357,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
             self.txo = {}
             self.tx_fees = {}
             self.pruned_txo = {}
+            self.slp.clear()
             self.save_transactions()
             self._addr_bal_cache = {}
             self._history = {}
@@ -635,7 +651,6 @@ class Abstract_Wallet(PrintError, SPVDelegate):
 
     def get_wallet_delta(self, tx):
         """ effect of tx on wallet """
-        addresses = self.get_addresses()
         is_relevant = False
         is_mine = False
         is_pruned = False
@@ -643,7 +658,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         v_in = v_out = v_out_mine = 0
         for item in tx.inputs():
             addr = item['address']
-            if addr in addresses:
+            if self.is_mine(addr):
                 is_mine = True
                 is_relevant = True
                 d = self.txo.get(item['prevout_hash'], {}).get(addr, [])
@@ -661,9 +676,9 @@ class Abstract_Wallet(PrintError, SPVDelegate):
                 is_partial = True
         if not is_mine:
             is_partial = False
-        for addr, value in tx.get_outputs():
+        for _type, addr, value in tx.outputs():
             v_out += value
-            if addr in addresses:
+            if self.is_mine(addr):
                 v_out_mine += value
                 is_relevant = True
         if is_pruned:
@@ -764,7 +779,8 @@ class Abstract_Wallet(PrintError, SPVDelegate):
                 'prevout_hash':prevout_hash,
                 'height':tx_height,
                 'coinbase':is_cb,
-                'is_frozen_coin':txo in self.frozen_coins
+                'is_frozen_coin':txo in self.frozen_coins,
+                'slp_token':self.slp.token_info_for_txo(txo),  # (token_id_hex, qty) tuple or None
             }
             out[txo] = x
         return out
@@ -841,12 +857,15 @@ class Abstract_Wallet(PrintError, SPVDelegate):
         confirmed_only = config.get('confirmed_only', DEFAULT_CONFIRMED_ONLY)
         if (isInvoice):
             confirmed_only = True
-        return self.get_utxos(domain, exclude_frozen=True, mature=True, confirmed_only=confirmed_only)
+        return self.get_utxos(domain, exclude_frozen=True, mature=True, confirmed_only=confirmed_only, exclude_slp=True)
 
     def get_utxos(self, domain = None, exclude_frozen = False, mature = False, confirmed_only = False,
-                  *, addr_set_out = None):
+                  *, addr_set_out = None, exclude_slp = True):
         '''Note that exclude_frozen = True checks for BOTH address-level and
         coin-level frozen status.
+
+        exclude_slp skips coins that also have SLP tokens on them.  This defaults
+        to True in EC 4.0.10+ in order to prevent inadvertently burning tokens.
 
         Optional kw-only arg `addr_set_out` specifies a set in which to add all
         addresses encountered in the utxos returned. '''
@@ -860,6 +879,8 @@ class Abstract_Wallet(PrintError, SPVDelegate):
                 utxos = self.get_addr_utxo(addr)
                 len_before = len(coins)
                 for x in utxos.values():
+                    if exclude_slp and x['slp_token']:
+                        continue
                     if exclude_frozen and x['is_frozen_coin']:
                         continue
                     if confirmed_only and x['height'] <= 0:
@@ -978,6 +999,10 @@ class Abstract_Wallet(PrintError, SPVDelegate):
             if op_return_ct == 1 and deferred_cashacct_add:
                 deferred_cashacct_add()
 
+            # Unconditionally invoke the SLP handler. Note that it is a fast &
+            # cheap no-op if this tx's outputs[0] is not an SLP script.
+            self.slp.add_tx(tx_hash, tx)
+
     def remove_transaction(self, tx_hash):
         with self.lock:
             self.print_error("removing tx from history", tx_hash)
@@ -1013,6 +1038,8 @@ class Abstract_Wallet(PrintError, SPVDelegate):
 
             # do this with the lock held
             self.cashacct.remove_transaction_hook(tx_hash)
+            # inform slp subsystem as well
+            self.slp.rm_tx(tx_hash)
 
 
     def receive_tx_callback(self, tx_hash, tx, tx_height):
@@ -1137,7 +1164,7 @@ class Abstract_Wallet(PrintError, SPVDelegate):
                     addr = x.get('address')
                     if addr == None: continue
                     input_addresses.append(addr.to_ui_string())
-                for addr, v in tx.get_outputs():
+                for _type, addr, v in tx.outputs():
                     output_addresses.append(addr.to_ui_string())
                 item['input_addresses'] = input_addresses
                 item['output_addresses'] = output_addresses
