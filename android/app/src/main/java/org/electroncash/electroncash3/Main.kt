@@ -347,7 +347,7 @@ class AboutDialog : AlertDialogFragment() {
         }
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         dialog.findViewById<TextView>(android.R.id.message)!!.movementMethod =
             LinkMovementMethod.getInstance()
     }
@@ -400,10 +400,10 @@ class ChangePasswordDialog : AlertDialogFragment() {
             .setNegativeButton(android.R.string.cancel, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             try {
-                val currentPassword = dialog.etCurrentPassword.text.toString()
+                val currentPassword = etCurrentPassword.text.toString()
                 val newPassword = confirmPassword(dialog)
                 try {
                     daemonModel.wallet!!.callAttr("update_password",
@@ -447,7 +447,7 @@ class SeedDialog : AlertDialogFragment() {
             .setPositiveButton(android.R.string.ok, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         setupSeedDialog(this)
     }
 }

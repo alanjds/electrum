@@ -50,10 +50,10 @@ abstract class AlertDialogFragment : DialogFragment() {
                               savedInstanceState: Bundle?): View? {
         // This isn't really consistent with the fragment lifecycle, but it's the only way to
         // make AlertDialog create its views.
-        dialog!!.show()
+        dialog.show()
 
         // This isn't really documented...
-        val contentParent = dialog!!.findViewById<ViewGroup>(android.R.id.content)
+        val contentParent = dialog.findViewById<ViewGroup>(android.R.id.content)!!
         val content = contentParent.getChildAt(0)
 
         // ... so make sure we are returning the layout defined in
@@ -77,26 +77,25 @@ abstract class AlertDialogFragment : DialogFragment() {
         super.onStart()
         if (!started) {
             started = true
-            onShowDialog(dialog as AlertDialog)
+            onShowDialog()
         }
         if (!model.started) {
             model.started = true
-            onFirstShowDialog(dialog as AlertDialog)
+            onFirstShowDialog()
         }
     }
 
     /** Can be used to do things like configure custom views, or attach listeners to buttons so
      *  they don't always close the dialog. */
-    open fun onShowDialog(dialog: AlertDialog) {}
+    open fun onShowDialog() {}
 
     /** Unlike onShowDialog, this will only be called once, even if the dialog is recreated
      * after a rotation. This can be used to do things like setting the initial state of
      * editable views. */
-    open fun onFirstShowDialog(dialog: AlertDialog) {}
+    open fun onFirstShowDialog() {}
 
-    // TODO override onCreateView so we don't have to find views via the dialog.
-    override fun getDialog(): Dialog {
-        return super.getDialog()!!
+    override fun getDialog(): AlertDialog {
+        return super.getDialog() as AlertDialog
     }
 }
 
@@ -220,7 +219,7 @@ abstract class TaskDialog<Result> : DialogFragment() {
 
 
 abstract class TaskLauncherDialog<Result> : AlertDialogFragment() {
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             showDialog(activity!!, LaunchedTaskDialog<Result>().apply {
                 setTargetFragment(this@TaskLauncherDialog, 0)
@@ -265,9 +264,9 @@ abstract class PasswordDialog<Result> : TaskLauncherDialog<Result>() {
         return dialog
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
-        dialog.etPassword.setOnEditorActionListener { _, actionId: Int, event: KeyEvent? ->
+    override fun onShowDialog() {
+        super.onShowDialog()
+        etPassword.setOnEditorActionListener { _, actionId: Int, event: KeyEvent? ->
             // See comments in ConsoleActivity.createInput.
             if (actionId == EditorInfo.IME_ACTION_DONE ||
                 event?.action == KeyEvent.ACTION_UP) {
@@ -278,7 +277,7 @@ abstract class PasswordDialog<Result> : TaskLauncherDialog<Result>() {
     }
 
     override fun onPreExecute() {
-        password = dialog.etPassword.text.toString()
+        password = etPassword.text.toString()
     }
 
     override fun doInBackground(): Result {

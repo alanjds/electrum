@@ -51,12 +51,12 @@ class SendDialog : AlertDialogFragment() {
             .setNeutralButton(R.string.qr_code, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         if (arguments != null) {
             val address = arguments!!.getString("address")
             if (address != null) {
-                dialog.etAddress.setText(address)
-                dialog.etAmount.requestFocus()
+                etAddress.setText(address)
+                etAmount.requestFocus()
             }
             val uri = arguments!!.getString("uri")
             if (uri != null) {
@@ -66,19 +66,19 @@ class SendDialog : AlertDialogFragment() {
         }
         setPaymentRequest(model.paymentRequest)
 
-        dialog.etAmount.addTextChangedListener(object : TextWatcher {
+        etAmount.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
-                if (!dialog.btnMax.isChecked) {  // Avoid infinite recursion.
+                if (!btnMax.isChecked) {  // Avoid infinite recursion.
                     updateUI()
                 }
             }
         })
-        dialog.tvUnit.setText(unitName)
-        dialog.btnMax.setOnCheckedChangeListener { _, _ -> updateUI() }
+        tvUnit.setText(unitName)
+        btnMax.setOnCheckedChangeListener { _, _ -> updateUI() }
 
-        with (dialog.sbFee) {
+        with (sbFee) {
             // setMin is not available until API level 26, so values are offset by MIN_FEE.
             progress = (daemonModel.config.callAttr("fee_per_kb").toInt() / 1000) - MIN_FEE
             max = (daemonModel.config.callAttr("max_fee_rate").toInt() / 1000) - MIN_FEE
@@ -97,7 +97,7 @@ class SendDialog : AlertDialogFragment() {
     }
 
     fun updateUI() {
-        val feeSpb = MIN_FEE + dialog.sbFee.progress
+        val feeSpb = MIN_FEE + sbFee.progress
         daemonModel.config.callAttr("set_key", "fee_per_kb", feeSpb * 1000)
         val tx: PyObject? = try {
             // If the user hasn't entered a valid address, use a dummy address in case we need
@@ -105,9 +105,9 @@ class SendDialog : AlertDialogFragment() {
             makeUnsignedTransaction(allowDummy = true)
         } catch (e: ToastException) { null }
 
-        dialog.etAmount.isEnabled = !dialog.btnMax.isChecked
-        if (dialog.btnMax.isChecked && tx != null) {
-            dialog.etAmount.setText(formatSatoshis(tx.callAttr("output_value").toLong()))
+        etAmount.isEnabled = !btnMax.isChecked
+        if (btnMax.isChecked && tx != null) {
+            etAmount.setText(formatSatoshis(tx.callAttr("output_value").toLong()))
         }
         amountBoxUpdate(dialog)
 
@@ -116,7 +116,7 @@ class SendDialog : AlertDialogFragment() {
             val fee = tx.callAttr("get_fee").toLong()
             feeLabel += " (${formatSatoshisAndUnit(fee)})"
         }
-        dialog.tvFeeLabel.setText(feeLabel)
+        tvFeeLabel.setText(feeLabel)
     }
 
     fun makeUnsignedTransaction(allowDummy: Boolean = false): PyObject {
@@ -126,14 +126,14 @@ class SendDialog : AlertDialogFragment() {
             outputs = pr.callAttr("get_outputs")
         } else {
             val addr = try {
-                makeAddress(dialog.etAddress.text.toString())
+                makeAddress(etAddress.text.toString())
             } catch (e: ToastException) {
                 if (allowDummy) daemonModel.wallet!!.callAttr("dummy_address")
                 else throw e
             }
             val output = py.builtins.callAttr(
                 "tuple", arrayOf(libBitcoin.get("TYPE_ADDRESS"), addr,
-                                 if (dialog.btnMax.isChecked) "!" else amountBoxGet(dialog)))
+                                 if (btnMax.isChecked) "!" else amountBoxGet(dialog)))
             outputs = py.builtins.callAttr("list", arrayOf(output))
         }
 
@@ -173,11 +173,11 @@ class SendDialog : AlertDialogFragment() {
                 showDialog(activity!!, GetPaymentRequestDialog(this, r.toString()))
             } else {
                 setPaymentRequest(null)
-                dialog.etAddress.setText(parsed.callAttr("get", "address")?.toString() ?: "")
+                etAddress.setText(parsed.callAttr("get", "address")?.toString() ?: "")
                 val amount = parsed.callAttr("get", "amount")?.toLong()
-                dialog.etAmount.setText(if (amount != null) formatSatoshis(amount) else "")
-                dialog.btnMax.isChecked = false
-                dialog.etDescription.setText(parsed.callAttr("get", "message")?.toString()
+                etAmount.setText(if (amount != null) formatSatoshis(amount) else "")
+                btnMax.isChecked = false
+                etDescription.setText(parsed.callAttr("get", "message")?.toString()
                                              ?: "")
             }
         } catch (e: ToastException) {
@@ -187,31 +187,29 @@ class SendDialog : AlertDialogFragment() {
 
     fun setPaymentRequest(pr: PyObject?) {
         model.paymentRequest = pr
-        with (dialog) {
-            for (et in listOf(etAddress, etAmount, etDescription)) {
-                if (pr == null) {
-                    et.setFocusableInTouchMode(true)  // setFocusable(true) isn't good enough.
-                } else {
-                    et.setFocusable(false)
-                }
+        for (et in listOf(etAddress, etAmount, etDescription)) {
+            if (pr == null) {
+                et.setFocusableInTouchMode(true)  // setFocusable(true) isn't good enough.
+            } else {
+                et.setFocusable(false)
             }
-            if (pr != null) {
-                etAddress.setText(pr.callAttr("get_requestor").toString())
-                etAmount.setText(formatSatoshis(pr.callAttr("get_amount").toLong()))
-                etDescription.setText(pr.callAttr("get_memo").toString())
-            }
-
-            btnContacts.setImageResource(if (pr == null) R.drawable.ic_person_24dp
-                                         else R.drawable.ic_check_24dp)
-            btnContacts.setOnClickListener {
-                if (pr == null) {
-                    showDialog(activity!!, SendContactsDialog())
-                } else {
-                    toast(pr.callAttr("get_verify_status").toString())
-                }
-            }
-            btnMax.setEnabled(pr == null)
         }
+        if (pr != null) {
+            etAddress.setText(pr.callAttr("get_requestor").toString())
+            etAmount.setText(formatSatoshis(pr.callAttr("get_amount").toLong()))
+            etDescription.setText(pr.callAttr("get_memo").toString())
+        }
+
+        btnContacts.setImageResource(if (pr == null) R.drawable.ic_person_24dp
+                                     else R.drawable.ic_check_24dp)
+        btnContacts.setOnClickListener {
+            if (pr == null) {
+                showDialog(activity!!, SendContactsDialog())
+            } else {
+                toast(pr.callAttr("get_verify_status").toString())
+            }
+        }
+        btnMax.setEnabled(pr == null)
     }
 
     fun onOK() {
@@ -256,7 +254,7 @@ class SendContactsDialog : MenuDialog() {
         }
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
+    override fun onShowDialog() {
         if (contacts.isEmpty()) {
             toast(R.string.you_dont_have_any_contacts)
             dismiss()
@@ -266,8 +264,8 @@ class SendContactsDialog : MenuDialog() {
     override fun onMenuItemSelected(item: MenuItem) {
         val address = contacts.get(item.itemId).addr.callAttr("to_ui_string").toString()
         with (findDialog(activity!!, SendDialog::class)!!) {
-            dialog.etAddress.setText(address)
-            dialog.etAmount.requestFocus()
+            etAddress.setText(address)
+            etAmount.requestFocus()
         }
     }
 }
@@ -317,7 +315,7 @@ class SendPasswordDialog() : PasswordDialog<PyObject>() {
         sendDialog.dismiss()
         toast(R.string.payment_sent, Toast.LENGTH_SHORT)
         setDescription(result.callAttr("txid").toString(),
-                       sendDialog.dialog.etDescription.text.toString())
+                       sendDialog.etDescription.text.toString())
         transactionsUpdate.setValue(Unit)
     }
 }

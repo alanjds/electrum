@@ -28,12 +28,12 @@ class NewWalletDialog1 : AlertDialogFragment() {
             .setNegativeButton(R.string.cancel, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        dialog.spnType.adapter = MenuAdapter(context!!, R.menu.wallet_type)
+    override fun onShowDialog() {
+        spnType.adapter = MenuAdapter(context!!, R.menu.wallet_type)
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             try {
-                val name = dialog.etName.text.toString()
+                val name = etName.text.toString()
                 if (name.isEmpty()) throw ToastException(R.string.name_is, Toast.LENGTH_SHORT)
                 if (name.contains("/")) throw ToastException(R.string.invalid_name)
                 if (daemonModel.listWallets().contains(name)) {
@@ -47,7 +47,7 @@ class NewWalletDialog1 : AlertDialogFragment() {
                     putString("password", password)
                 }
 
-                val walletType = dialog.spnType.selectedItemId.toInt()
+                val walletType = spnType.selectedItemId.toInt()
                 if (walletType in listOf(R.id.menuCreateSeed, R.id.menuRestoreSeed)) {
                     nextDialog = NewWalletSeedDialog()
                     val seed = if (walletType == R.id.menuCreateSeed)
@@ -59,7 +59,7 @@ class NewWalletDialog1 : AlertDialogFragment() {
                 } else if (walletType == R.id.menuImportMaster) {
                     nextDialog = NewWalletImportMasterDialog()
                 } else {
-                    throw Exception("Unknown item: ${dialog.spnType.selectedItem}")
+                    throw Exception("Unknown item: ${spnType.selectedItem}")
                 }
                 showDialog(activity!!, nextDialog.apply { setArguments(arguments) })
             } catch (e: ToastException) { e.show() }
@@ -89,7 +89,7 @@ abstract class NewWalletDialog2 : TaskLauncherDialog<Unit>() {
     }
 
     override fun onPreExecute() {
-        input = dialog.etInput.text.toString()
+        input = etInput.text.toString()
     }
 
     override fun doInBackground() {
@@ -112,23 +112,23 @@ class NewWalletSeedDialog : NewWalletDialog2() {
     var bip39: Boolean by notNull()
     var derivation: String? = null
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
+    override fun onShowDialog() {
+        super.onShowDialog()
         setupSeedDialog(this)
         if (arguments!!.getString("seed") == null) {  // Restore from seed
-            dialog.bip39Panel.visibility = View.VISIBLE
-            dialog.swBip39.setOnCheckedChangeListener { _, isChecked ->
-                dialog.etDerivation.isEnabled = isChecked
+            bip39Panel.visibility = View.VISIBLE
+            swBip39.setOnCheckedChangeListener { _, isChecked ->
+                etDerivation.isEnabled = isChecked
             }
         }
     }
 
     override fun onPreExecute() {
         super.onPreExecute()
-        passphrase = dialog.etPassphrase.text.toString()
-        bip39 = dialog.swBip39.isChecked
+        passphrase = etPassphrase.text.toString()
+        bip39 = swBip39.isChecked
         if (bip39) {
-            derivation = dialog.etDerivation.text.toString()
+            derivation = etDerivation.text.toString()
         }
     }
 
@@ -159,9 +159,9 @@ class NewWalletImportDialog : NewWalletDialog2() {
         builder.setNeutralButton(R.string.qr_code, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
-        dialog.tvPrompt.setText(R.string.enter_a_list_of_bitcoin)
+    override fun onShowDialog() {
+        super.onShowDialog()
+        tvPrompt.setText(R.string.enter_a_list_of_bitcoin)
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { scanQR(this) }
     }
 
@@ -196,7 +196,7 @@ class NewWalletImportDialog : NewWalletDialog2() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result != null && result.contents != null) {
-            val text = dialog.etInput.text
+            val text = etInput.text
             if (!text.isEmpty() && !text.endsWith("\n")) {
                 text.append("\n")
             }
@@ -215,9 +215,9 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
         builder.setNeutralButton(R.string.qr_code, null)
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        super.onShowDialog(dialog)
-        dialog.tvPrompt.setText(getString(R.string.to_create_a_watching) + " " +
+    override fun onShowDialog() {
+        super.onShowDialog()
+        tvPrompt.setText(getString(R.string.to_create_a_watching) + " " +
                                 getString(R.string.to_create_a_spending))
         dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener { scanQR(this) }
     }
@@ -225,8 +225,8 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         val result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result != null && result.contents != null) {
-            dialog.etInput.setText(result.contents)
-            dialog.etInput.setSelection(result.contents.length)
+            etInput.setText(result.contents)
+            etInput.setSelection(result.contents.length)
         } else {
             super.onActivityResult(requestCode, resultCode, data)
         }
@@ -244,7 +244,7 @@ class NewWalletImportMasterDialog : NewWalletDialog2() {
 
 
 fun setupSeedDialog(fragment: AlertDialogFragment) {
-    with (fragment.dialog) {
+    with (fragment) {
         val seed = fragment.arguments!!.getString("seed")
         if (seed == null) {
             // Import

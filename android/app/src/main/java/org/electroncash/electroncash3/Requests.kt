@@ -127,19 +127,19 @@ class RequestDialog() : AlertDialogFragment() {
         }
     }
 
-    override fun onShowDialog(dialog: AlertDialog) {
-        dialog.btnCopy.setOnClickListener {
+    override fun onShowDialog() {
+        btnCopy.setOnClickListener {
             copyToClipboard(getUri(), R.string.request_uri)
         }
-        dialog.tvAddress.text = address.callAttr("to_ui_string").toString()
-        dialog.tvUnit.text = unitName
+        tvAddress.text = address.callAttr("to_ui_string").toString()
+        tvUnit.text = unitName
 
         val tw = object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) { updateUI() }
         }
-        for (et in listOf(dialog.etAmount, dialog.etDescription)) {
+        for (et in listOf(etAmount, etDescription)) {
             et.addTextChangedListener(tw)
         }
         fiatUpdate.observe(this, Observer { updateUI() })
@@ -152,17 +152,17 @@ class RequestDialog() : AlertDialogFragment() {
         }
     }
 
-    override fun onFirstShowDialog(dialog: AlertDialog) {
+    override fun onFirstShowDialog() {
         val request = existingRequest
         if (request != null) {
             val model = RequestModel(request)
-            dialog.etAmount.setText(model.amount)
-            dialog.etDescription.setText(model.description)
+            etAmount.setText(model.amount)
+            etDescription.setText(model.description)
         }
     }
 
     private fun updateUI() {
-        showQR(dialog.imgQR, getUri())
+        showQR(imgQR, getUri())
         amountBoxUpdate(dialog)
     }
 
@@ -187,7 +187,7 @@ class RequestDialog() : AlertDialogFragment() {
     }
 
     val description
-        get() = dialog.etDescription.text.toString()
+        get() = etDescription.text.toString()
 }
 
 
