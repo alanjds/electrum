@@ -10,14 +10,18 @@ import android.os.Bundle
 import androidx.fragment.app.DialogFragment
 import androidx.appcompat.app.AlertDialog
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.PopupMenu
 import android.widget.Toast
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.password.*
+import java.lang.IllegalStateException
 import kotlin.properties.Delegates.notNull
 
 
@@ -33,6 +37,35 @@ abstract class AlertDialogFragment : DialogFragment() {
         val builder = AlertDialog.Builder(context!!)
         onBuildDialog(builder)
         return builder.create()
+    }
+
+    // Although AlertDialog creates its own view, it's helpful for that view also to be
+    // returned by Fragment.getView, because:
+    //   * It allows Kotlin synthetic properties to be used directly on the fragment, rather
+    //     than prefixing them all with `dialog.`.
+    //   * It ensures cancelPendingInputEvents is called when the fragment is stopped (see
+    //     https://github.com/Electron-Cash/Electron-Cash/issues/1091#issuecomment-526951516
+    //     and Fragment.initLifecycle.
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View? {
+        // This isn't really consistent with the fragment lifecycle, but it's the only way to
+        // make AlertDialog create its views.
+        dialog!!.show()
+
+        // This isn't really documented...
+        val contentParent = dialog!!.findViewById<ViewGroup>(android.R.id.content)
+        val content = contentParent.getChildAt(0)
+
+        // ... so make sure we are returning the layout defined in
+        // android/platform/frameworks/support/appcompat/res/layout/abc_alert_dialog_material.xml.
+        val contentClassName = content.javaClass.name
+        if (contentClassName != "androidx.appcompat.widget.AlertDialogLayout") {
+            throw IllegalStateException("Unexpected content view $contentClassName")
+        }
+
+        // The view will be re-added in DialogFragment.onActivityCreated.
+        contentParent.removeView(content)
+        return content
     }
 
     open fun onBuildDialog(builder: AlertDialog.Builder) {}
