@@ -221,6 +221,9 @@ abstract class TaskDialog<Result> : DialogFragment() {
 abstract class TaskLauncherDialog<Result> : AlertDialogFragment() {
     override fun onShowDialog() {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            // It's possible for multiple button clicks to be queued before the listener runs,
+            // but showDialog will ensure that the progress dialog (and therefore the task) is
+            // only created once.
             showDialog(activity!!, LaunchedTaskDialog<Result>().apply {
                 setTargetFragment(this@TaskLauncherDialog, 0)
             })

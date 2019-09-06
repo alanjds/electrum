@@ -1,13 +1,9 @@
 package org.electroncash.electroncash3
 
 import android.app.Activity
-import androidx.lifecycle.Observer
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import android.text.Html
 import android.text.SpannableStringBuilder
 import android.text.method.LinkMovementMethod
@@ -18,6 +14,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.change_password.*
 import kotlinx.android.synthetic.main.main.*
@@ -47,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     var cleanStart = true
     var newIntent = true
     var walletName: String? = null
+    var viewStateRestored = false
 
     override fun onCreate(state: Bundle?) {
         // Remove splash screen: doesn't work if called after super.onCreate.
@@ -81,6 +82,19 @@ class MainActivity : AppCompatActivity() {
         daemonUpdate.observe(this, Observer { refresh() })
         settings.getString("base_unit").observe(this, Observer { updateToolbar() })
         fiatUpdate.observe(this, Observer { updateToolbar() })
+
+        // LiveData observers are activated after onStart returns. But this means that if an
+        // observer modifies a view, the modification could be undone by
+        // onRestoreInstanceState. This isn't a problem in the Fragment lifecycle because it
+        // restores view state before calling onStart. So we do the same at the activity level.
+        //
+        // I considered fixing this by delaying the lifecycle start event until onPostCreate,
+        // but this was more awkward because of the way lifecycle events are driven by
+        // ReportFragment. Also, this would require overriding ComponentActivity.getLifecycle,
+        // whose documentation says it will be made final in a future version.
+        if (state != null) {
+            onRestoreInstanceState(state)
+        }
     }
 
     fun refresh() {
@@ -225,6 +239,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onRestoreInstanceState(state: Bundle) {
+        if (viewStateRestored) return
+        viewStateRestored = true
+
         if (!cleanStart) {
             super.onRestoreInstanceState(state)
         }
