@@ -1,14 +1,6 @@
 package org.electroncash.electroncash3
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.appcompat.app.AlertDialog
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
 import android.text.Spanned
@@ -21,6 +13,14 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.observe
 import com.chaquo.python.PyObject
 import kotlinx.android.synthetic.main.address_detail.*
 import kotlinx.android.synthetic.main.addresses.*
@@ -40,7 +40,7 @@ class AddressesFragment : Fragment(), MainFragment {
         val filterType = MutableLiveData<Int>().apply { value = R.id.filterAll }
         val filterStatus = MutableLiveData<Int>().apply { value = R.id.filterAll }
     }
-    val model by lazy { ViewModelProviders.of(this).get(Model::class.java) }
+    val model: Model by viewModels()
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
@@ -53,14 +53,14 @@ class AddressesFragment : Fragment(), MainFragment {
 
         setupVerticalList(rvAddresses)
         rvAddresses.adapter = AddressesAdapter(activity!!)
-        daemonUpdate.observe(viewLifecycleOwner, Observer { refresh() })
+        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
         for (filter in listOf(model.filterType, model.filterStatus)) {
-            filter.observe(viewLifecycleOwner, Observer { refresh() })
+            filter.observe(viewLifecycleOwner, { refresh() })
         }
 
-        addressLabelUpdate.observe(viewLifecycleOwner, Observer { rebind() })
-        settings.getBoolean("cashaddr_format").observe(viewLifecycleOwner, Observer { rebind() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, Observer { rebind() })
+        addressLabelUpdate.observe(viewLifecycleOwner, { rebind() })
+        settings.getBoolean("cashaddr_format").observe(viewLifecycleOwner, { rebind() })
+        settings.getString("base_unit").observe(viewLifecycleOwner, { rebind() })
     }
 
     fun refresh() {
@@ -227,7 +227,7 @@ class AddressTransactionsDialog() : AlertDialogFragment() {
 
         setupVerticalList(rvTransactions)
         rvTransactions.adapter = TransactionsAdapter(activity!!)
-        transactionsUpdate.observe(this, Observer { refresh() })
+        transactionsUpdate.observe(this, { refresh() })
     }
 
     fun refresh() {

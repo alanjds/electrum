@@ -1,17 +1,17 @@
 package org.electroncash.electroncash3
 
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
 import android.graphics.drawable.Drawable
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AlertDialog
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.observe
 import com.chaquo.python.Kwarg
 import com.chaquo.python.PyObject
 import kotlinx.android.synthetic.main.transaction_detail.*
@@ -32,9 +32,9 @@ class TransactionsFragment : Fragment(), MainFragment {
         setupVerticalList(rvTransactions)
         rvTransactions.adapter = TransactionsAdapter(activity!!)
 
-        daemonUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        transactionsUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, Observer { refresh() })
+        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
+        transactionsUpdate.observe(viewLifecycleOwner, { refresh() })
+        settings.getString("base_unit").observe(viewLifecycleOwner, { refresh() })
 
         btnSend.setOnClickListener {
             try {

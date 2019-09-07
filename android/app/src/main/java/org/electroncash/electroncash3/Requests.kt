@@ -1,16 +1,16 @@
 package org.electroncash.electroncash3
 
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
 import android.os.Bundle
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
-import androidx.appcompat.app.AlertDialog
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.observe
 import com.chaquo.python.PyObject
 import kotlinx.android.synthetic.main.amount_box.*
 import kotlinx.android.synthetic.main.request_detail.*
@@ -30,9 +30,9 @@ class RequestsFragment : Fragment(), MainFragment {
         setupVerticalList(rvRequests)
         rvRequests.adapter = RequestsAdapter(activity!!)
 
-        daemonUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        requestsUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, Observer {
+        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
+        requestsUpdate.observe(viewLifecycleOwner, { refresh() })
+        settings.getString("base_unit").observe(viewLifecycleOwner, {
             rvRequests.adapter?.notifyDataSetChanged()
         })
 
@@ -142,7 +142,7 @@ class RequestDialog() : AlertDialogFragment() {
         for (et in listOf(etAmount, etDescription)) {
             et.addTextChangedListener(tw)
         }
-        fiatUpdate.observe(this, Observer { updateUI() })
+        fiatUpdate.observe(this, { updateUI() })
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener { onOK() }
 
         if (existingRequest != null) {

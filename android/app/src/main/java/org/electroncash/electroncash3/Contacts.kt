@@ -1,7 +1,7 @@
 package org.electroncash.electroncash3
 
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
+import androidx.lifecycle.observe
 import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -32,9 +32,9 @@ class ContactsFragment : Fragment(), MainFragment {
         setupVerticalList(rvContacts)
         rvContacts.adapter = ContactsAdapter(activity!!)
 
-        daemonUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        contactsUpdate.observe(viewLifecycleOwner, Observer { refresh() })
-        settings.getBoolean("cashaddr_format").observe(viewLifecycleOwner, Observer {
+        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
+        contactsUpdate.observe(viewLifecycleOwner, { refresh() })
+        settings.getBoolean("cashaddr_format").observe(viewLifecycleOwner, {
             rvContacts.adapter?.notifyDataSetChanged()
         })
 

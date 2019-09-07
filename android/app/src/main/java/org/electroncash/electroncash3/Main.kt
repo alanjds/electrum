@@ -17,7 +17,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
+import androidx.lifecycle.observe
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.change_password.*
 import kotlinx.android.synthetic.main.main.*
@@ -80,9 +80,9 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        daemonUpdate.observe(this, Observer { refresh() })
-        settings.getString("base_unit").observe(this, Observer { updateToolbar() })
-        fiatUpdate.observe(this, Observer { updateToolbar() })
+        daemonUpdate.observe(this, { refresh() })
+        settings.getString("base_unit").observe(this, { updateToolbar() })
+        fiatUpdate.observe(this, { updateToolbar() })
 
         // LiveData observers are activated after onStart returns. But this means that if an
         // observer modifies a view, the modification could be undone by
