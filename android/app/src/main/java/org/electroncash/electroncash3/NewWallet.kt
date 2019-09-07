@@ -3,11 +3,11 @@ package org.electroncash.electroncash3
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import androidx.fragment.app.DialogFragment
-import androidx.appcompat.app.AlertDialog
 import android.text.Selection
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.fragment.app.DialogFragment
 import com.chaquo.python.Kwarg
 import com.chaquo.python.PyException
 import com.google.zxing.integration.android.IntentIntegrator
@@ -117,9 +117,9 @@ class NewWalletSeedDialog : NewWalletDialog2() {
         setupSeedDialog(this)
         if (arguments!!.getString("seed") == null) {  // Restore from seed
             bip39Panel.visibility = View.VISIBLE
-            swBip39.setOnCheckedChangeListener { _, isChecked ->
-                etDerivation.isEnabled = isChecked
-            }
+            val bip39Listener = { etDerivation.isEnabled = swBip39.isChecked }
+            swBip39.setOnCheckedChangeListener { _, _ -> bip39Listener() }
+            bip39Listener()
         }
     }
 
