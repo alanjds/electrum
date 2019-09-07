@@ -21,6 +21,7 @@ import androidx.lifecycle.Observer
 import com.chaquo.python.PyException
 import kotlinx.android.synthetic.main.change_password.*
 import kotlinx.android.synthetic.main.main.*
+import kotlin.properties.Delegates.notNull
 import kotlin.reflect.KClass
 
 
@@ -225,7 +226,7 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.menuChangePassword -> showDialog(this, ChangePasswordDialog())
             R.id.menuShowSeed-> { showDialog(this, ShowSeedPasswordDialog()) }
-            R.id.menuDelete -> showDialog(this, DeleteWalletDialog())
+            R.id.menuDelete -> showDialog(this, DeleteWalletConfirmDialog())
             R.id.menuClose -> showDialog(this, CloseWalletDialog())
             else -> throw Exception("Unknown item $item")
         }
@@ -377,36 +378,54 @@ class AboutDialog : AlertDialogFragment() {
 }
 
 
-class DeleteWalletDialog : TaskLauncherDialog<Unit>() {
+class OpenWalletDialog : PasswordDialog<String>() {
+    override fun onPassword(password: String): String {
+        val name = arguments!!.getString("walletName")!!
+        daemonModel.loadWallet(name, password)
+        return name
+    }
+
+    override fun onPostExecute(result: String) {
+        daemonModel.commands.callAttr("select_wallet", result)
+    }
+}
+
+
+class DeleteWalletConfirmDialog : AlertDialogFragment() {
     override fun onBuildDialog(builder: AlertDialog.Builder) {
         val message = getString(R.string.do_you_want_to_delete, daemonModel.walletName) +
                       "\n\n" + getString(R.string.if_your)
         builder.setTitle(R.string.confirm_delete)
             .setMessage(message)
-            .setPositiveButton(R.string.delete, null)
+            .setPositiveButton(R.string.delete, { _, _ ->
+                showDialog(activity!!, DeleteWalletDialog())})
             .setNegativeButton(android.R.string.cancel, null)
     }
+}
 
+class DeleteWalletDialog : CloseWalletDialog() {
     override fun doInBackground() {
-        daemonModel.commands.callAttr("delete_wallet", daemonModel.walletName)
+        super.doInBackground()
+        daemonModel.commands.callAttr("delete_wallet", walletName)
     }
 
     override fun onPostExecute(result: Unit) {
-        (activity as MainActivity).openDrawer()
+        (activity as MainActivity).updateDrawer()
+        super.onPostExecute(result)
     }
 }
 
 
-class OpenWalletDialog : PasswordDialog<Unit>() {
-    override fun onPassword(password: String) {
-        daemonModel.loadWallet(arguments!!.getString("walletName")!!, password)
+open class CloseWalletDialog : TaskDialog<Unit>() {
+    var walletName: String by notNull()
+
+    override fun onPreExecute() {
+        walletName = daemonModel.walletName!!
+        daemonModel.commands.callAttr("select_wallet", null)
     }
-}
 
-
-class CloseWalletDialog : TaskDialog<Unit>() {
     override fun doInBackground() {
-        daemonModel.commands.callAttr("close_wallet")
+        daemonModel.commands.callAttr("close_wallet", walletName)
     }
 
     override fun onPostExecute(result: Unit) {

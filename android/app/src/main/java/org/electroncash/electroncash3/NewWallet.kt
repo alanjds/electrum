@@ -78,7 +78,7 @@ fun confirmPassword(dialog: Dialog): String {
 }
 
 
-abstract class NewWalletDialog2 : TaskLauncherDialog<Unit>() {
+abstract class NewWalletDialog2 : TaskLauncherDialog<String>() {
     var input: String by notNull()
 
     override fun onBuildDialog(builder: AlertDialog.Builder) {
@@ -92,17 +92,19 @@ abstract class NewWalletDialog2 : TaskLauncherDialog<Unit>() {
         input = etInput.text.toString()
     }
 
-    override fun doInBackground() {
+    override fun doInBackground(): String {
         val name = arguments!!.getString("name")!!
         val password = arguments!!.getString("password")!!
         onCreateWallet(name, password)
         daemonModel.loadWallet(name, password)
+        return name
     }
 
     abstract fun onCreateWallet(name: String, password: String)
 
-    override fun onPostExecute(result: Unit) {
+    override fun onPostExecute(result: String) {
         dismissDialog(activity!!, NewWalletDialog1::class)
+        daemonModel.commands.callAttr("select_wallet", result)
     }
 }
 
