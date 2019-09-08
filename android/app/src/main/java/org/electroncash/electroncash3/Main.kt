@@ -44,7 +44,7 @@ val FRAGMENTS = HashMap<Int, KClass<out Fragment>>().apply {
 interface MainFragment
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(R.layout.main) {
     var cleanStart = true
     var newIntent = true
     var walletName: String? = null
@@ -67,7 +67,6 @@ class MainActivity : AppCompatActivity() {
         }
         super.onCreate(if (!cleanStart) state else null)
 
-        setContentView(R.layout.main)
         setSupportActionBar(toolbar)
         supportActionBar!!.apply {
             setDisplayHomeAsUpEnabled(true)

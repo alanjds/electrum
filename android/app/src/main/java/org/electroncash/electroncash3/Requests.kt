@@ -3,9 +3,7 @@ package org.electroncash.electroncash3
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -20,12 +18,7 @@ import kotlinx.android.synthetic.main.requests.*
 val requestsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class RequestsFragment : Fragment(), MainFragment {
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.requests, container, false)
-    }
-
+class RequestsFragment : Fragment(R.layout.requests), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvRequests)
         rvRequests.adapter = RequestsAdapter(activity!!)

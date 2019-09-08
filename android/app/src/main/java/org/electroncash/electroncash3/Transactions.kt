@@ -2,9 +2,7 @@ package org.electroncash.electroncash3
 
 import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
@@ -22,12 +20,7 @@ import kotlin.math.roundToInt
 val transactionsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class TransactionsFragment : Fragment(), MainFragment {
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.transactions, container, false)
-    }
-
+class TransactionsFragment : Fragment(R.layout.transactions), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvTransactions)
         rvTransactions.adapter = TransactionsAdapter(activity!!)

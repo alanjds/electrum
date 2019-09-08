@@ -69,13 +69,7 @@ fun setDefaultValue(sp: SharedPreferences, key: String, default: String) {
 }
 
 
-class SettingsActivity : AppCompatActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.settings)
-    }
-}
-
+class SettingsActivity : AppCompatActivity(R.layout.settings)
 
 class SettingsFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {

@@ -6,12 +6,10 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
-import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -34,19 +32,13 @@ val clsAddress by lazy { libAddress["Address"]!! }
 val addressLabelUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class AddressesFragment : Fragment(), MainFragment {
-    
+class AddressesFragment : Fragment(R.layout.addresses), MainFragment {
     class Model : ViewModel() {
         val filterType = MutableLiveData<Int>().apply { value = R.id.filterAll }
         val filterStatus = MutableLiveData<Int>().apply { value = R.id.filterAll }
     }
     val model: Model by viewModels()
     
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.addresses, container, false)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         btnType.setOnClickListener { showFilterDialog(FilterTypeDialog::class) }
         btnStatus.setOnClickListener { showFilterDialog(FilterStatusDialog::class) }

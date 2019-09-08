@@ -1,16 +1,14 @@
 package org.electroncash.electroncash3
 
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.observe
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.appcompat.app.AlertDialog
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Toast
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.observe
 import com.chaquo.python.PyObject
 import com.google.zxing.integration.android.IntentIntegrator
 import kotlinx.android.synthetic.main.contact_detail.*
@@ -22,12 +20,7 @@ val libContacts by lazy { libMod("contacts") }
 val contactsUpdate = MutableLiveData<Unit>().apply { value = Unit }
 
 
-class ContactsFragment : Fragment(), MainFragment {
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        return inflater.inflate(R.layout.contacts, container, false)
-    }
-
+class ContactsFragment : Fragment(R.layout.contacts), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvContacts)
         rvContacts.adapter = ContactsAdapter(activity!!)
