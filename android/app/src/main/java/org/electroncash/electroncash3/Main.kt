@@ -308,7 +308,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         ft.attach(newFrag)
-        ft.commit()
+        ft.commitNow()
 
         navBottom.visibility = if (newFrag is NoWalletFragment) View.GONE else View.VISIBLE
     }
@@ -325,7 +325,7 @@ class MainActivity : AppCompatActivity() {
             frag = FRAGMENTS[id]!!.java.newInstance()
             supportFragmentManager.beginTransaction()
                 .add(flContent.id, frag, fragTag(id))
-                .commit()
+                .commitNow()
             return frag
         }
     }
@@ -338,7 +338,7 @@ class MainActivity : AppCompatActivity() {
                 ft.remove(frag)
             }
         }
-        ft.commit()
+        ft.commitNow()
     }
 
     fun fragTag(id: Int) = "MainFragment:$id"
