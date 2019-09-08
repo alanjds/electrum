@@ -64,7 +64,7 @@ class NewWalletDialog1 : AlertDialogFragment() {
                 } else {
                     throw Exception("Unknown item: ${spnType.selectedItem}")
                 }
-                showDialog(activity!!, nextDialog.apply { setArguments(arguments) })
+                showDialog(this, nextDialog.apply { setArguments(arguments) })
             } catch (e: ToastException) { e.show() }
         }
     }
@@ -106,7 +106,7 @@ abstract class NewWalletDialog2 : TaskLauncherDialog<String>() {
     abstract fun onCreateWallet(name: String, password: String)
 
     override fun onPostExecute(result: String) {
-        dismissDialog(activity!!, NewWalletDialog1::class)
+        (targetFragment as NewWalletDialog1).dismiss()
         daemonModel.commands.callAttr("select_wallet", result)
     }
 }

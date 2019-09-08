@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import androidx.databinding.ViewDataBinding
 import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -56,17 +57,21 @@ fun formatSatoshisAndUnit(amount: Long): String {
 }
 
 
-fun showDialog(activity: FragmentActivity, frag: DialogFragment) {
+fun showDialog(target: Fragment, frag: DialogFragment) {
+    showDialog(target.activity!!, frag, target)
+}
+
+fun showDialog(activity: FragmentActivity, frag: DialogFragment, target: Fragment? = null) {
     val fm = activity.supportFragmentManager
     val tag = frag::class.java.name
     if (fm.findFragmentByTag(tag) == null) {
+        if (target != null) {
+            frag.setTargetFragment(target, 0)
+        }
         frag.show(fm, tag)
     }
 }
 
-fun <T: DialogFragment> dismissDialog(activity: FragmentActivity, fragClass: KClass<T>) {
-    findDialog(activity, fragClass)?.dismiss()
-}
 
 fun <T: DialogFragment> findDialog(activity: FragmentActivity, fragClass: KClass<T>) : T? {
     val tag = fragClass.java.name
