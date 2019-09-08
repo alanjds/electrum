@@ -28,9 +28,12 @@ class NewWalletDialog1 : AlertDialogFragment() {
             .setNegativeButton(R.string.cancel, null)
     }
 
-    override fun onShowDialog() {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         spnType.adapter = MenuAdapter(context!!, R.menu.wallet_type)
+    }
 
+    override fun onShowDialog() {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             try {
                 val name = etName.text.toString()
