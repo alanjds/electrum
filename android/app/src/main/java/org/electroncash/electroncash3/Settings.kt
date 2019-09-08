@@ -72,8 +72,7 @@ fun setDefaultValue(sp: SharedPreferences, key: String, default: String) {
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportFragmentManager.beginTransaction()
-            .replace(android.R.id.content, SettingsFragment()).commit()
+        setContentView(R.layout.settings)
     }
 }
 
