@@ -29,8 +29,6 @@ import kotlin.reflect.KClass
 val libAddress by lazy { libMod("address") }
 val clsAddress by lazy { libAddress["Address"]!! }
 
-val addressLabelUpdate = MutableLiveData<Unit>().apply { value = Unit }
-
 
 class AddressesFragment : Fragment(R.layout.addresses), MainFragment {
     class Model : ViewModel() {
@@ -45,14 +43,13 @@ class AddressesFragment : Fragment(R.layout.addresses), MainFragment {
 
         setupVerticalList(rvAddresses)
         rvAddresses.adapter = AddressesAdapter(activity!!)
-        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
-        for (filter in listOf(model.filterType, model.filterStatus)) {
-            filter.observe(viewLifecycleOwner, { refresh() })
-        }
-
-        addressLabelUpdate.observe(viewLifecycleOwner, { rebind() })
-        settings.getBoolean("cashaddr_format").observe(viewLifecycleOwner, { rebind() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, { rebind() })
+        TriggerLiveData().apply {
+            addSource(daemonUpdate)
+            addSource(model.filterType)
+            addSource(model.filterStatus)
+            addSource(settings.getBoolean("cashaddr_format"))
+            addSource(settings.getString("base_unit"))
+        }.observe(viewLifecycleOwner, { refresh() })
     }
 
     fun refresh() {
@@ -76,10 +73,6 @@ class AddressesFragment : Fragment(R.layout.addresses), MainFragment {
         val frag = cls.java.newInstance()
         frag.setTargetFragment(this, 0)
         showDialog(activity!!, frag)
-    }
-
-    fun rebind() {
-        rvAddresses.adapter?.notifyDataSetChanged()
     }
 
     fun passesFilter(am: AddressModel): Boolean {
@@ -155,7 +148,6 @@ class AddressDialog() : AlertDialogFragment() {
             setPositiveButton(android.R.string.ok, { _, _  ->
                 setDescription(addrModel.toString("storage"),
                                etDescription.text.toString())
-                addressLabelUpdate.setValue(Unit)
             })
         }
     }
@@ -219,7 +211,7 @@ class AddressTransactionsDialog() : AlertDialogFragment() {
 
         setupVerticalList(rvTransactions)
         rvTransactions.adapter = TransactionsAdapter(activity!!)
-        transactionsUpdate.observe(this, { refresh() })
+        daemonUpdate.observe(this, { refresh() })
     }
 
     fun refresh() {

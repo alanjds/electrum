@@ -8,7 +8,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.observe
 import com.chaquo.python.Kwarg
 import com.chaquo.python.PyObject
@@ -17,17 +16,14 @@ import kotlinx.android.synthetic.main.transactions.*
 import kotlin.math.roundToInt
 
 
-val transactionsUpdate = MutableLiveData<Unit>().apply { value = Unit }
-
-
 class TransactionsFragment : Fragment(R.layout.transactions), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvTransactions)
         rvTransactions.adapter = TransactionsAdapter(activity!!)
-
-        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
-        transactionsUpdate.observe(viewLifecycleOwner, { refresh() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, { refresh() })
+        TriggerLiveData().apply {
+            addSource(daemonUpdate)
+            addSource(settings.getString("base_unit"))
+        }.observe(viewLifecycleOwner, { refresh() })
 
         btnSend.setOnClickListener {
             try {
@@ -113,7 +109,6 @@ class TransactionDialog() : AlertDialogFragment() {
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(android.R.string.ok, {_, _ ->
                 setDescription(txid, etDescription.text.toString())
-                transactionsUpdate.setValue(Unit)
             })
     }
 

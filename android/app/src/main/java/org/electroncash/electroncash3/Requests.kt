@@ -7,7 +7,6 @@ import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.observe
 import com.chaquo.python.PyObject
 import kotlinx.android.synthetic.main.amount_box.*
@@ -15,19 +14,14 @@ import kotlinx.android.synthetic.main.request_detail.*
 import kotlinx.android.synthetic.main.requests.*
 
 
-val requestsUpdate = MutableLiveData<Unit>().apply { value = Unit }
-
-
 class RequestsFragment : Fragment(R.layout.requests), MainFragment {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupVerticalList(rvRequests)
         rvRequests.adapter = RequestsAdapter(activity!!)
-
-        daemonUpdate.observe(viewLifecycleOwner, { refresh() })
-        requestsUpdate.observe(viewLifecycleOwner, { refresh() })
-        settings.getString("base_unit").observe(viewLifecycleOwner, {
-            rvRequests.adapter?.notifyDataSetChanged()
-        })
+        TriggerLiveData().apply {
+            addSource(daemonUpdate)
+            addSource(settings.getString("base_unit"))
+        }.observe(viewLifecycleOwner, { refresh() })
 
         btnAdd.setOnClickListener { newRequest(activity!!) }
     }
@@ -140,7 +134,7 @@ class RequestDialog() : AlertDialogFragment() {
 
         if (existingRequest != null) {
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
-                showDialog(activity!!, DeleteRequestDialog(address))
+                showDialog(this, DeleteRequestDialog(address))
             }
         }
     }
@@ -174,7 +168,7 @@ class RequestDialog() : AlertDialogFragment() {
                 "add_payment_request",
                 wallet.callAttr("make_payment_request", address, amount, description),
                 daemonModel.config)
-            requestsUpdate.setValue(Unit)
+            daemonUpdate.setValue(Unit)
             dismiss()
         } catch (e: ToastException) { e.show() }
     }
@@ -198,8 +192,8 @@ class DeleteRequestDialog() : AlertDialogFragment() {
                 daemonModel.wallet!!.callAttr("remove_payment_request",
                                               makeAddress(arguments!!.getString("address")!!),
                                               daemonModel.config)
-                requestsUpdate.setValue(Unit)
-                findDialog(activity!!, RequestDialog::class)!!.dismiss()
+                daemonUpdate.setValue(Unit)
+                (targetFragment as RequestDialog).dismiss()
             }
             .setNegativeButton(android.R.string.cancel, null)
     }
