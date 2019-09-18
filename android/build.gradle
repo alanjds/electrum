@@ -8,9 +8,9 @@ buildscript {
         maven { url "https://electroncash.org/maven" }
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:3.2.1"
+        classpath "com.android.tools.build:gradle:3.5.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-        classpath "com.chaquo.python:gradle:5.1.0"
+        classpath "com.chaquo.python:gradle:6.3.1"
     }
 }
 
